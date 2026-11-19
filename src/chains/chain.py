@@ -5,25 +5,31 @@ from dotenv import load_dotenv
 root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../'))
 sys.path.append(root_dir)
 
-from langchain_community.cross_encoders import HuggingFaceCrossEncoder
-from langchain_core.runnables import RunnablePassthrough
+from langchain_core.runnables import RunnableLambda
 from langchain_core.output_parsers import StrOutputParser
 from langchain_groq import ChatGroq
-from langchain_openai import ChatOpenAI 
-from langchain_classic.retrievers.document_compressors import CrossEncoderReranker
-from langchain_core.messages import SystemMessage
 from langchain_classic.retrievers import ContextualCompressionRetriever, MultiQueryRetriever
+from langchain_classic.chains.history_aware_retriever import create_history_aware_retriever
 from src.retrieval.vector_store import get_vector_store
 from src.retrieval.retriever import get_retriever
-from src.chains.prompt import get_rag_prompt
+from src.retrieval.reranker import OpenRouterReranker
+from src.chains.prompt import (
+    get_contextualize_q_prompt,
+    get_conversational_rag_prompt,
+)
+from src.config import (
+    LLM_MODEL_NAME,
+    LLM_TEMPERATURE,
+    RERANKER_MODEL_NAME,
+)
 
 load_dotenv()
 
 def create_rag_chain(disease_label=None):
     llm = ChatGroq(
-        model="openai/gpt-oss-20b", 
+        model=LLM_MODEL_NAME, 
         streaming=True,
-        temperature=0.2,
+        temperature=LLM_TEMPERATURE,
         api_key=os.getenv("GROQ_API_KEY"),
     ) 
     
@@ -40,23 +46,29 @@ def create_rag_chain(disease_label=None):
         llm=llm
     )
 
-    print("Memuat model Re-ranker (BAAI/bge-reranker-v2-m3)...")
-    cross_encoder = HuggingFaceCrossEncoder(model_name="BAAI/bge-reranker-base")
-    
+    print(f"Memuat model Re-ranker via OpenRouter ({RERANKER_MODEL_NAME})...")
     # Kita hanya ambil 3 dokumen paling relevan (top_n=3) setelah di-rerank
-    compressor = CrossEncoderReranker(model=cross_encoder, top_n=3)
+    compressor = OpenRouterReranker(top_n=3)
     
-    # 4. BUNGKUS MENJADI COMPRESSION RETRIEVER
+    # BUNGKUS MENJADI COMPRESSION RETRIEVER
     rerank_retriever = ContextualCompressionRetriever(
         base_compressor=compressor,
         base_retriever=mq_retriever
     )
     
-    prompt = get_rag_prompt()
+    # History-aware retriever (mengubah percakapan multi-turn menjadi query mandiri jika ada riwayat)
+    contextualize_q_prompt = get_contextualize_q_prompt()
+    history_aware_retriever = create_history_aware_retriever(
+        llm=llm,
+        retriever=rerank_retriever,
+        prompt=contextualize_q_prompt,
+    )
+    
+    qa_prompt = get_conversational_rag_prompt()
     
     def format_docs(docs):
         print("\n" + "="*50)
-        print("🎯 [DEBUG] 3 DOKUMEN TERBAIK SETELAH DI-RERANK:")
+        print("🎯 [DEBUG] DOKUMEN TERBAIK SETELAH DI-RERANK & DIVERIFIKASI:")
         for i, doc in enumerate(docs):
             sumber = doc.metadata.get('label') or doc.metadata.get('source') or 'Sumber tidak diketahui'
             skor = doc.metadata.get('relevance_score', 'N/A')
@@ -65,11 +77,26 @@ def create_rag_chain(disease_label=None):
         
         # Gabungkan teks dokumen final
         return "\n\n".join(doc.page_content for doc in docs)
+
+    def normalize_input(x):
+        """Mendukung input berupa string langsung maupun dictionary conversational."""
+        if isinstance(x, str):
+            return {"input": x, "chat_history": []}
+        if isinstance(x, dict):
+            return {
+                "input": x.get("input") or x.get("question", ""),
+                "chat_history": x.get("chat_history", []) or []
+            }
+        return {"input": str(x), "chat_history": []}
         
     rag_chain = (
-        # Gunakan rerank_retriever sebagai sumber konteks
-        {"context": rerank_retriever | format_docs, "input": RunnablePassthrough()} 
-        | prompt
+        RunnableLambda(normalize_input)
+        | {
+            "context": history_aware_retriever | format_docs,
+            "input": lambda x: x["input"],
+            "chat_history": lambda x: x["chat_history"],
+        }
+        | qa_prompt
         | llm
         | StrOutputParser()
     )

@@ -17,6 +17,7 @@ langchain_community
 langchain-experimental
 langchain-core
 langchain-openai
+langchain-google-genai
 langchain-chroma
 langchain-huggingface
 chromadb

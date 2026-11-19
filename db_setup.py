@@ -2,10 +2,13 @@ import json
 import os
 from langchain_core.documents import Document
 from langchain_chroma import Chroma
-from langchain_huggingface import HuggingFaceEmbeddings
+from src.config import (
+    CHROMA_DB_DIR,
+    DATA_DIR,
+)
+from src.retrieval.vector_store import get_embedder, COLLECTION_NAME
 
-JSON_FILE_PATH = "data/data.json"
-CHROMA_DB_DIR = "chroma_data"
+JSON_FILE_PATH = str(DATA_DIR / "data.json")
 
 def main():
     if not os.path.exists(JSON_FILE_PATH):
@@ -40,15 +43,15 @@ def main():
         )
         documents.append(doc)
 
-    print("Memuat Embedding Model")
-    embeddings = HuggingFaceEmbeddings(model_name="Qwen/Qwen3-Embedding-0.6B")
+    print("Memuat Embedding Model (Google Gemini Embedding)")
+    embeddings = get_embedder()
 
-    print("Menyimpan data ke ChromaDB")
+    print(f"Menyimpan data ke ChromaDB di {CHROMA_DB_DIR}")
     Chroma.from_documents(
         documents=documents,
         embedding=embeddings,
-        persist_directory=CHROMA_DB_DIR,
-        collection_name="chilicare_kb"
+        persist_directory=str(CHROMA_DB_DIR),
+        collection_name=COLLECTION_NAME
     )
     print(f"Berhasil! Database tersimpan di folder: {CHROMA_DB_DIR}\n")
 

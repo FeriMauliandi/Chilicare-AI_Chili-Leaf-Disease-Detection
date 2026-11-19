@@ -3,13 +3,14 @@ from dotenv import load_dotenv
 from langchain_groq import ChatGroq
 from src.chains.prompt import DISEASE_PROMPT_TEMPLATE
 from src.retrieval.vector_store import get_vector_store
+from src.config import LLM_MODEL_NAME, LLM_TEMPERATURE
 
 load_dotenv()
 
 def get_llm():
     return ChatGroq(
-        model="openai/gpt-oss-20b", 
-        temperature=0.2,
+        model=LLM_MODEL_NAME, 
+        temperature=LLM_TEMPERATURE,
         api_key=os.getenv("GROQ_API_KEY"),
     )
 

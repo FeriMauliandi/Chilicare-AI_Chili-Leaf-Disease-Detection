@@ -1,5 +1,9 @@
-import pytest
-from src.chains.prompt import get_rag_prompt, DISEASE_PROMPT_TEMPLATE
+from src.chains.prompt import (
+    get_rag_prompt,
+    get_contextualize_q_prompt,
+    get_conversational_rag_prompt,
+    DISEASE_PROMPT_TEMPLATE,
+)
 
 def test_get_rag_prompt():
     """Test get_rag_prompt template generation and variable requirements."""
@@ -22,3 +26,16 @@ def test_disease_prompt_template():
     )
     assert "kuning" in formatted
     assert "Infeksi Begomovirus" in formatted
+
+def test_get_contextualize_q_prompt():
+    """Test get_contextualize_q_prompt structure with chat_history and input."""
+    prompt = get_contextualize_q_prompt()
+    assert "chat_history" in prompt.input_variables
+    assert "input" in prompt.input_variables
+
+def test_get_conversational_rag_prompt():
+    """Test get_conversational_rag_prompt structure with context, chat_history, and input."""
+    prompt = get_conversational_rag_prompt()
+    assert "context" in prompt.input_variables
+    assert "chat_history" in prompt.input_variables
+    assert "input" in prompt.input_variables

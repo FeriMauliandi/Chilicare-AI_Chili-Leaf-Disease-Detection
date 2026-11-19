@@ -8,6 +8,7 @@ const API_DETECT_URL = "https://feryms-chilicareai.hf.space/detect";
 const API_ASK_URL = "https://feryms-chilicareai.hf.space/ask";
 
 let selectedFile = null;
+let chatHistory = [];
 
 function parseMarkdown(text) {
   if (!text) return "";
@@ -277,6 +278,9 @@ async function handleSendChat(event) {
   inputEl.disabled = true;
   btnSend.disabled = true;
 
+  // Salin riwayat percakapan sebelumnya (maksimal 10 putaran terakhir)
+  const historyToSend = chatHistory.slice(-10);
+
   // 2. Tampilkan animasi loading (...) sebelum AI mulai mengetik
   const loadingId = showChatLoading();
 
@@ -284,7 +288,10 @@ async function handleSendChat(event) {
     const response = await fetch(API_ASK_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ question: question }),
+      body: JSON.stringify({
+        question: question,
+        history: historyToSend,
+      }),
     });
 
     if (!response.ok) throw new Error("Gagal");
@@ -292,7 +299,7 @@ async function handleSendChat(event) {
     // AI mulai membalas, hilangkan animasi loading
     removeChatLoading(loadingId);
 
-const aiBubble = appendMessage("assistant", "");
+    const aiBubble = appendMessage("assistant", "");
     const chatBox = document.getElementById("chat-messages");
 
     // 4. LOGIKA STREAMING DENGAN "REM MESIN TIK" (TYPEWRITER EFFECT)
@@ -304,11 +311,11 @@ const aiBubble = appendMessage("assistant", "");
     let charIndex = 0;
 
     // A. Fungsi pengetik independen (Jalan di latar belakang)
-    // Angka 15 adalah kecepatan ketik (15 milidetik per huruf). Bisa Anda perbesar jika ingin lebih lambat.
+    // Angka 15 adalah kecepatan ketik (15 milidetik per huruf).
     const typingInterval = setInterval(() => {
       // Jika masih ada huruf di tangki yang belum ditampilkan
       if (charIndex < fullTextFromAPI.length) {
-        // Keluarkan 2 huruf sekaligus agar tidak terlalu lambat
+        // Keluarkan 4 huruf sekaligus agar kecepatan pas
         textToDisplay += fullTextFromAPI.slice(charIndex, charIndex + 4);
         charIndex += 4;
         
@@ -317,7 +324,7 @@ const aiBubble = appendMessage("assistant", "");
       }
     }, 15); 
 
-    // B. Pipa penyedot dari API Server (Berjalan secepat kilat)
+    // B. Pipa penyedot dari API Server
     while (true) {
       const { done, value } = await reader.read();
       
@@ -327,6 +334,10 @@ const aiBubble = appendMessage("assistant", "");
           if (charIndex >= fullTextFromAPI.length) {
             clearInterval(typingInterval);
             clearInterval(waitComplete);
+
+            // Simpan percakapan ke chatHistory lokal setelah streaming sukses
+            chatHistory.push({ role: "user", content: question });
+            chatHistory.push({ role: "assistant", content: fullTextFromAPI });
           }
         }, 50);
         break;
@@ -345,6 +356,26 @@ const aiBubble = appendMessage("assistant", "");
     btnSend.disabled = false;
     inputEl.focus();
   }
+}
+
+function clearChatHistory() {
+  chatHistory = [];
+  const chatBox = document.getElementById("chat-messages");
+  chatBox.innerHTML = `
+    <div
+      id="chat-empty"
+      class="h-full flex flex-col items-center justify-center text-slate-400 space-y-4 mt-4 md:mt-10"
+    >
+      <div
+        class="w-12 h-12 md:w-16 md:h-16 rounded-full bg-slate-100 flex items-center justify-center text-xl md:text-2xl"
+      >
+        💬
+      </div>
+      <p class="text-sm md:text-base text-center">
+        Kirim pesan untuk memulai percakapan...
+      </p>
+    </div>
+  `;
 }
 
 function appendMessage(role, content) {

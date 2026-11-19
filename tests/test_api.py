@@ -70,3 +70,25 @@ def test_ask_expert_endpoint(mock_create_rag_chain):
     
     assert response.status_code == 200
     assert "Tanaman cabai membutuhkan air." in response.text
+
+@patch("backend.api.create_rag_chain")
+def test_ask_expert_with_history(mock_create_rag_chain):
+    """Test /ask endpoint handles multi-turn conversation history."""
+    mock_chain = MagicMock()
+    mock_chain.stream.return_value = ["Gunakan ", "fungisida ", "mankozeb."]
+    mock_create_rag_chain.return_value = mock_chain
+
+    payload = {
+        "question": "Berapa dosisnya?",
+        "history": [
+            {"role": "user", "content": "Daun cabai ada bercak hitam"},
+            {"role": "assistant", "content": "Itu adalah bercak daun cercospora"}
+        ]
+    }
+    response = client.post("/ask", json=payload)
+    assert response.status_code == 200
+    assert "Gunakan fungisida mankozeb." in response.text
+    
+    call_args = mock_chain.stream.call_args[0][0]
+    assert call_args["input"] == "Berapa dosisnya?"
+    assert len(call_args["chat_history"]) == 2

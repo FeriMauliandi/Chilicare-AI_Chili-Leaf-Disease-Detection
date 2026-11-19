@@ -1,3 +1,4 @@
+from typing import List, Optional
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from ultralytics import YOLO
@@ -9,6 +10,7 @@ import cv2
 import numpy as np 
 from pydantic import BaseModel
 from fastapi.responses import StreamingResponse
+from langchain_core.messages import HumanMessage, AIMessage
 from src.chains.rag import generate_narrative
 from src.chains.chain import create_rag_chain
 
@@ -91,19 +93,34 @@ async def detect_disease(file: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Terjadi kesalahan: {str(e)}")
     
+class ChatMessage(BaseModel):
+    role: str  # "user" atau "assistant"
+    content: str
+
 class QuestionRequest(BaseModel):
     question: str
+    history: Optional[List[ChatMessage]] = None
 
 @app.post("/ask")
 async def ask_expert(request: QuestionRequest):
     try:
         rag_chain = create_rag_chain()
         
+        chat_history = []
+        if request.history:
+            for msg in request.history:
+                if msg.role == "user":
+                    chat_history.append(HumanMessage(content=msg.content))
+                elif msg.role in ("assistant", "ai"):
+                    chat_history.append(AIMessage(content=msg.content))
+        
         # Buat fungsi generator untuk memecah respons menjadi potongan (chunks)
         def generate_response():
-            # rag_chain.stream() menggantikan rag_chain.invoke()
-            for chunk in rag_chain.stream(request.question):
-                # yield mengirimkan potongan teks ke klien saat itu juga
+            chain_input = {
+                "input": request.question,
+                "chat_history": chat_history,
+            }
+            for chunk in rag_chain.stream(chain_input):
                 yield chunk 
                 
         # Kembalikan StreamingResponse, bukan dictionary JSON
