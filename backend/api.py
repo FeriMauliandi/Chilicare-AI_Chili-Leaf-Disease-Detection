@@ -29,10 +29,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+MODEL_CANDIDATES = [
+    "model/best(v11s).pt",
+    "model/bestv11.pt",
+    "model/best(v11).pt",
+    "model/best.pt"
+]
+model_path = next((p for p in MODEL_CANDIDATES if os.path.exists(p)), "model/best(v11s).pt")
 try:
-    model = YOLO("model/best(v11).pt")
+    model = YOLO(model_path)
 except Exception as e:  # noqa: BLE001
-    print(f"Error memuat model YOLO: {e}")
+    print(f"Error memuat model YOLO ({model_path}): {e}")
     model = None
 
 @app.get("/api/health")

@@ -50,6 +50,8 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+        with:
+          lfs: true
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -74,6 +76,8 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+        with:
+          lfs: true
 
       - name: Lowercase Repository Owner
         id: repo
@@ -110,14 +114,22 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          lfs: true
+
+      - name: Pull Git LFS Objects
+        run: |
+          git lfs pull
 
       - name: Deploy to Hugging Face Space
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
           if [ -n "$HF_TOKEN" ]; then
-            echo "Deploying to Hugging Face Space..."
-            git push https://feryms:$HF_TOKEN@huggingface.co/spaces/feryms/chilicareAI main:main --force
+            echo "Configuring Git LFS & Hugging Face Remote..."
+            git lfs install
+            git remote add hf https://feryms:$HF_TOKEN@huggingface.co/spaces/feryms/chilicareAI || git remote set-url hf https://feryms:$HF_TOKEN@huggingface.co/spaces/feryms/chilicareAI
+            echo "Deploying commits and LFS objects to Hugging Face Space..."
+            git push hf main:main --force
           else
             echo "HF_TOKEN secret not provided. Skipping Hugging Face deployment step."
           fi
