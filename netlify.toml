@@ -12,16 +12,14 @@
   command = ""
 
 # Routing halaman:
-# 1. Mengarahkan root domain (/) untuk menyajikan landing page modern (landing.html)
-# force = true wajib ada agar Netlify mengabaikan berkas fisik index.html (shadowing)
-[[redirects]]
-  from = "/"
-  to = "/landing.html"
-  status = 200
-  force = true
-
-# 2. Mengarahkan path /app ke aplikasi deteksi penyakit & asisten chat (index.html)
+# 1. Mengarahkan URL /app ke aplikasi diagnosis (app.html)
 [[redirects]]
   from = "/app"
-  to = "/index.html"
+  to = "/app.html"
   status = 200
+
+# 2. Mengarahkan /landing.html ke halaman utama (/)
+[[redirects]]
+  from = "/landing.html"
+  to = "/"
+  status = 301

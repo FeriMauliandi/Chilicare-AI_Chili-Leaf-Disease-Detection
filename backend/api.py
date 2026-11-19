@@ -49,14 +49,17 @@ def api_health():
 @app.get("/")
 async def read_root(request: Request):
     accept = request.headers.get("accept", "")
-    if "text/html" in accept and os.path.exists("frontend/landing.html"):
-        return FileResponse("frontend/landing.html")
+    if "text/html" in accept:
+        for candidate in ["frontend/index.html", "frontend/landing.html"]:
+            if os.path.exists(candidate):
+                return FileResponse(candidate)
     return {"message": "Selamat datang di ChiliCare API. Gunakan endpoint /detect untuk inferensi."}
 
 @app.get("/app")
 async def serve_app():
-    if os.path.exists("frontend/index.html"):
-        return FileResponse("frontend/index.html")
+    for candidate in ["frontend/app.html", "frontend/index.html"]:
+        if os.path.exists(candidate):
+            return FileResponse(candidate)
     raise HTTPException(status_code=404, detail="Halaman aplikasi tidak ditemukan.")
 
 @app.post("/detect")

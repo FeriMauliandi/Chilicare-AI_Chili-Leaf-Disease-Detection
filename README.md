@@ -1,12 +1,3 @@
----
-title: ChiliCare AI
-emoji: 🌶️
-colorFrom: red
-colorTo: green
-sdk: docker
-pinned: false
-short_description: Deteksi Penyakit Daun Cabai Berbasis YOLOv11s dan LLM RAG
----
 
 # 🌶️ ChiliCare AI: Sistem Cerdas Diagnosis Penyakit Daun Cabai (YOLOv11s & LLM RAG)
 
@@ -136,10 +127,11 @@ chilicareAI/
 ├── backend/
 │   └── api.py                    # Aplikasi FastAPI, routing inferensi YOLO & streaming chat
 ├── frontend/
-│   ├── index.html                # Antarmuka aplikasi web deteksi & chat
-│   ├── landing.html              # Halaman beranda (Landing page) modern
+│   ├── index.html                # Halaman beranda (Landing page) modern
+│   ├── app.html                  # Antarmuka aplikasi web deteksi penyakit & chat AI
 │   ├── script.js                 # Logika streaming chat, upload & markdown parsing
-│   └── background.jpg            # Aset fotografi cabai di kebun
+│   ├── background.jpg            # Aset fotografi cabai di kebun
+│   └── _redirects                # Konfigurasi routing Netlify CDN
 ├── src/
 │   ├── config.py                 # Konfigurasi variabel lingkungan & path terpusat
 │   ├── chains/

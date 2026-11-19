@@ -1,0 +1,447 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ChiliCare AI: Aplikasi Diagnosis Daun Cabai</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ["'Plus Jakarta Sans'", "sans-serif"],
+            },
+            colors: {
+              foliage: {
+                950: "#081c11",
+                900: "#0d2618",
+                800: "#133823",
+                700: "#1b4d30",
+                600: "#255d3e",
+                100: "#eaf4ed",
+                50: "#f3f8f4",
+              },
+              chili: {
+                600: "#b80020",
+                500: "#d90429",
+                400: "#ef233c",
+                100: "#fde8eb",
+                50: "#fdf1f2",
+              },
+              canvas: "#f8f6f0",
+              surface: "#f1ede4",
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+      :root {
+        --color-foliage-dark: #0d2618;
+        --color-foliage-deep: #133823;
+        --color-foliage-mid: #255d3e;
+        --color-chili-red: #d90429;
+        --color-chili-hover: #b80020;
+        --color-canvas: #f8f6f0;
+        --color-border: #ded8ce;
+      }
+
+      body {
+        font-family: "Plus Jakarta Sans", sans-serif;
+        background-color: var(--color-canvas);
+        color: #1a241e;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      /* Aksesibilitas interaksi & fokus (R-32, R-39) */
+      button, a, label[for], [role="button"] { cursor: pointer; }
+      input:disabled, button:disabled { cursor: not-allowed; }
+
+      :focus-visible {
+        outline: 2px solid var(--color-chili-red);
+        outline-offset: 2px;
+        border-radius: 4px;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after {
+          animation-duration: 0.01ms !important;
+          transition-duration: 0.01ms !important;
+        }
+      }
+
+      /* Animasi mengetik (typing indicator chatbot) */
+      .dot-flashing {
+        position: relative;
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background-color: var(--color-foliage-mid);
+        animation: dot-flashing 1s infinite linear alternate;
+        animation-delay: 0.5s;
+      }
+      .dot-flashing::before,
+      .dot-flashing::after {
+        content: "";
+        display: inline-block;
+        position: absolute;
+        top: 0;
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background-color: var(--color-foliage-mid);
+        animation: dot-flashing 1s infinite alternate;
+      }
+      .dot-flashing::before { left: -10px; animation-delay: 0s; }
+      .dot-flashing::after  { left: 10px;  animation-delay: 1s; }
+      @keyframes dot-flashing {
+        0%       { background-color: var(--color-foliage-mid); }
+        50%, 100% { background-color: rgba(37, 93, 62, 0.2); }
+      }
+
+      /* Scrollbar */
+      ::-webkit-scrollbar { width: 5px; height: 5px; }
+      ::-webkit-scrollbar-track { background: transparent; }
+      ::-webkit-scrollbar-thumb { background: #d0c9be; border-radius: 10px; }
+      ::-webkit-scrollbar-thumb:hover { background: var(--color-foliage-mid); }
+      .hide-scrollbar::-webkit-scrollbar { display: none; }
+      .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+      /* Upload area hover state */
+      .upload-dropzone:hover {
+        border-color: var(--color-foliage-mid);
+        background-color: #f3f8f4;
+      }
+      .upload-dropzone:hover .upload-icon-circle {
+        background-color: #eaf4ed;
+        transform: scale(1.05);
+      }
+
+      /* Sidebar navigation buttons */
+      .nav-tab-active {
+        background-color: var(--color-chili-red) !important;
+        color: #ffffff !important;
+        box-shadow: 0 4px 14px rgba(217, 4, 41, 0.3) !important;
+      }
+      .nav-tab-inactive {
+        background-color: transparent !important;
+        color: rgba(255, 255, 255, 0.75) !important;
+      }
+      .nav-tab-inactive:hover {
+        background-color: rgba(255, 255, 255, 0.08) !important;
+        color: #ffffff !important;
+      }
+
+      /* Override bubble user dari script.js agar serasi dengan tema cabai */
+      #chat-messages .bg-rose-500 {
+        background-color: var(--color-chili-red) !important;
+        box-shadow: 0 4px 14px rgba(217, 4, 41, 0.25) !important;
+      }
+    </style>
+  </head>
+
+  <body class="flex flex-col md:flex-row h-[100dvh] bg-[#f8f6f0] text-[#1a241e] font-sans antialiased overflow-hidden">
+
+    <!-- =====================================================================
+         SIDEBAR UTAMA (MENGIKUTI GAYA VISUAL DEEP FOLIAGE LANDING.HTML)
+         ===================================================================== -->
+    <aside class="w-full md:w-80 bg-[#0d2618] text-white border-b md:border-b-0 md:border-r border-[#193b27] flex flex-col justify-between shrink-0 z-20">
+
+      <!-- Header Sidebar: Logo & Navigasi -->
+      <div class="p-4 md:p-6">
+        <!-- Tautan Kembali ke Landing Page & Brand -->
+        <div class="flex items-center justify-between mb-6">
+          <a href="index.html" class="flex items-center gap-2.5 group" aria-label="ChiliCare AI - Halaman Utama">
+            <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-[#d90429] to-[#b80020] flex items-center justify-center shrink-0 shadow-md shadow-red-900/30">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M12 2C6.5 2 2 6.5 2 12c0 4.5 3 8 7 9.5 0-2.5 1-4.5 2.5-6.5C13 13 15 11 16 9c1.5-3 .5-6-4-7z"/>
+                <path d="M14 2c1 2 2 3 4 3"/>
+              </svg>
+            </div>
+            <div>
+              <span class="text-base font-extrabold text-white tracking-tight block leading-tight">ChiliCare AI</span>
+              <span class="text-[11px] text-white/50 block font-medium">Agronomi Presisi</span>
+            </div>
+          </a>
+
+          <a
+            href="index.html"
+            class="text-[11px] font-semibold text-white/70 hover:text-white bg-white/10 hover:bg-white/15 px-2.5 py-1 rounded-md transition-colors flex items-center gap-1"
+            title="Kembali ke landing page"
+          >
+            <span>Landing</span>
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="7" y1="17" x2="17" y2="7"/>
+              <polyline points="7 7 17 7 17 17"/>
+            </svg>
+          </a>
+        </div>
+
+        <!-- Tombol Menu Utama (Deteksi Penyakit / Chatbot Ahli) -->
+        <nav aria-label="Menu navigasi aplikasi">
+          <div class="flex flex-row md:flex-col gap-2 overflow-x-auto hide-scrollbar pb-1 md:pb-0">
+            <button
+              id="btn-menu-detect"
+              onclick="switchMenu('detect')"
+              class="nav-tab-active flex-1 md:w-full flex items-center justify-center md:justify-start gap-3 px-4 py-3 rounded-xl font-bold transition-all text-sm whitespace-nowrap"
+              aria-pressed="true"
+            >
+              <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
+              </svg>
+              <span>Deteksi Penyakit</span>
+            </button>
+
+            <button
+              id="btn-menu-chat"
+              onclick="switchMenu('chat')"
+              class="nav-tab-inactive flex-1 md:w-full flex items-center justify-center md:justify-start gap-3 px-4 py-3 rounded-xl font-semibold transition-all text-sm whitespace-nowrap"
+              aria-pressed="false"
+            >
+              <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/>
+              </svg>
+              <span>Chatbot Ahli</span>
+            </button>
+          </div>
+        </nav>
+      </div>
+
+      <!-- Footer Sidebar: Spesifikasi Model Nyata (Menyerupai Tech Artifacts Landing) -->
+      <div class="hidden md:block p-4 m-4 bg-[#133823]/80 rounded-xl border border-white/10">
+        <h2 class="font-bold text-[11px] text-white/50 uppercase tracking-wider mb-2.5">Arsitektur Terpasang</h2>
+        <div class="text-xs text-white/80 space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-white/60">Vision</span>
+            <span class="font-mono text-[11px] font-semibold text-[#ffe6ea] bg-white/10 px-2 py-0.5 rounded">YOLOv11s</span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-white/60">Vector DB</span>
+            <span class="font-mono text-[11px] font-semibold text-[#ffe6ea] bg-white/10 px-2 py-0.5 rounded">ChromaDB</span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-white/60">LLM RAG</span>
+            <span class="font-mono text-[11px] font-semibold text-[#ffe6ea] bg-white/10 px-2 py-0.5 rounded">GPT-OSS 20B</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- =====================================================================
+         KONTEN UTAMA: DETEKSI & CHATBOT
+         ===================================================================== -->
+    <main class="flex-1 overflow-y-auto bg-[#f8f6f0] relative h-full" id="main-content">
+
+      <!-- ===================================================================
+           TAB 1: DETEKSI PENYAKIT DAUN
+           =================================================================== -->
+      <div id="section-detect" class="block max-w-3xl mx-auto p-4 md:p-10 pb-28">
+
+        <header class="mb-8 mt-2 md:mt-0">
+          <span class="text-xs font-bold uppercase tracking-wider text-[#d90429] mb-1 block">Modul Deteksi Visual</span>
+          <h1 class="text-2xl md:text-3xl font-extrabold text-[#101c14] tracking-tight mb-2">
+            Analisis Daun Cabai
+          </h1>
+          <p class="text-sm md:text-base text-[#45564c] max-w-xl leading-relaxed">
+            Unggah foto daun cabai bergejala. Model YOLOv11s akan mendeteksi lesi fisik secara instan, dipadankan dengan rekomendasi ilmiah berbasis RAG.
+          </p>
+        </header>
+
+        <!-- Kotak Unggah Foto -->
+        <div class="bg-white rounded-2xl border border-[#ded8ce] p-3 mb-6 max-w-2xl shadow-sm">
+          <label
+            for="file-upload"
+            class="upload-dropzone relative flex flex-col items-center justify-center w-full h-64 border-2 border-dashed border-[#c9bfb2] rounded-xl transition-all overflow-hidden"
+          >
+            <div id="upload-placeholder" class="flex flex-col items-center justify-center gap-3 transition-opacity duration-200">
+              <div class="upload-icon-circle w-12 h-12 rounded-xl bg-[#f3f8f4] border border-[#d9eee1] flex items-center justify-center transition-transform">
+                <svg class="w-6 h-6 text-[#255d3e]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+                </svg>
+              </div>
+              <div class="text-center">
+                <p class="text-sm font-bold text-[#101c14]">Pilih atau seret foto daun</p>
+                <p class="text-xs text-[#6e8074] mt-0.5">Format didukung: JPG, PNG, JPEG</p>
+              </div>
+            </div>
+            <img id="image-preview" class="hidden absolute inset-0 w-full h-full object-cover z-10 rounded-xl" alt="Preview foto daun yang diunggah" />
+          </label>
+          <input id="file-upload" type="file" accept="image/jpeg, image/png, image/jpg" class="hidden" onchange="handleFileChange(event)" />
+        </div>
+
+        <p id="file-name" class="text-sm font-semibold text-[#255d3e] mb-4 hidden"></p>
+
+        <!-- Tombol Aksi Analisis (Warna Merah Cabai Ripe Red) -->
+        <div class="flex">
+          <button
+            id="btn-upload"
+            onclick="handleUpload()"
+            class="hidden bg-[#d90429] hover:bg-[#b80020] text-white font-bold py-3.5 px-8 rounded-xl transition-all shadow-md shadow-red-600/25 disabled:opacity-60 flex items-center gap-2"
+          >
+            <span>Mulai Analisis AI</span>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="7" y1="17" x2="17" y2="7"/>
+              <polyline points="7 7 17 7 17 17"/>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Wadah Notifikasi Galat (Error State) -->
+        <div
+          id="detect-error"
+          class="hidden mt-6 p-4 bg-[#fdf1f2] text-[#d90429] border border-[#fbd0d5] rounded-xl text-sm font-semibold max-w-2xl"
+          role="alert"
+        ></div>
+
+        <!-- Wadah Hasil Diagnosis -->
+        <div id="detect-result" class="hidden mt-10 max-w-2xl">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-extrabold text-[#101c14]">
+              Hasil Diagnosis Terpadu
+            </h2>
+            <span class="text-xs font-bold text-[#255d3e] bg-[#eaf4ed] px-2.5 py-1 rounded-md">YOLOv11s &amp; LLM RAG</span>
+          </div>
+
+          <div class="bg-white rounded-2xl border border-[#ded8ce] p-2 mb-6 shadow-sm">
+            <img
+              id="result-image"
+              class="w-full rounded-xl object-cover"
+              alt="Hasil deteksi bounding box daun cabai"
+              width="640" height="480"
+            />
+          </div>
+          <div id="result-details" class="space-y-4"></div>
+        </div>
+      </div>
+
+      <!-- ===================================================================
+           TAB 2: CHATBOT AHLI CABAI
+           =================================================================== -->
+      <div id="section-chat" class="hidden flex-col h-full max-w-3xl mx-auto relative">
+
+        <header class="p-4 md:p-6 pb-4 sticky top-0 bg-[#f8f6f0]/95 backdrop-blur-md z-10 border-b border-[#ded8ce] flex items-center justify-between">
+          <div>
+            <span class="text-xs font-bold uppercase tracking-wider text-[#d90429] block">Konsultasi Agronomi</span>
+            <h1 class="text-xl font-extrabold text-[#101c14]">Asisten Ahli Cabai</h1>
+            <p class="text-xs text-[#6e8074] mt-0.5">Tanyakan dosis pemupukan, jadwal semprot, atau pencegahan hama.</p>
+          </div>
+          <button
+            type="button"
+            onclick="clearChatHistory()"
+            title="Bersihkan riwayat percakapan"
+            class="text-xs text-[#6e8074] hover:text-[#d90429] bg-white hover:bg-red-50 px-3 py-2 rounded-lg border border-[#ded8ce] transition-colors flex items-center gap-1.5 font-semibold"
+          >
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+            <span>Reset Chat</span>
+          </button>
+        </header>
+
+        <!-- Wadah Percakapan -->
+        <div
+          id="chat-messages"
+          class="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 pb-32"
+        >
+          <!-- Tampilan Percakapan Kosong -->
+          <div id="chat-empty" class="h-full flex flex-col items-center justify-center text-[#6e8074] gap-4 mt-12">
+            <div class="w-14 h-14 rounded-2xl bg-[#eaf4ed] border border-[#d9eee1] flex items-center justify-center">
+              <svg class="w-7 h-7 text-[#255d3e]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/>
+              </svg>
+            </div>
+            <div class="text-center max-w-sm">
+              <p class="text-sm font-bold text-[#101c14] mb-1">Mulai Konsultasi Tanaman</p>
+              <p class="text-xs text-[#6e8074] leading-relaxed">
+                Tanyakan seputar perawatan cabai rawit, cara meracik fungisida nabati, atau gejala penyakit daun.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Kolom Masukan Pesan Chat -->
+        <div class="absolute bottom-0 left-0 w-full px-4 md:px-6 pb-5 bg-gradient-to-t from-[#f8f6f0] via-[#f8f6f0]/95 pt-8">
+          <form
+            id="chat-form"
+            onsubmit="handleSendChat(event)"
+            class="bg-white border border-[#ded8ce] rounded-2xl shadow-md flex gap-2 items-center p-1.5 focus-within:border-[#255d3e] transition-colors"
+          >
+            <input
+              type="text"
+              id="chat-input"
+              placeholder="Ketik pertanyaan seputar tanaman cabai Anda..."
+              class="flex-1 bg-transparent border-none px-4 py-2.5 text-sm text-[#101c14] focus:outline-none placeholder-[#8b9b90]"
+              autocomplete="off"
+              required
+            />
+            <button
+              type="submit"
+              id="btn-chat-send"
+              class="bg-[#d90429] hover:bg-[#b80020] text-white p-2.5 rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center w-10 h-10 shrink-0 shadow-sm"
+              aria-label="Kirim pesan"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+              </svg>
+            </button>
+          </form>
+        </div>
+      </div>
+    </main>
+
+    <!-- Skrip Aplikasi -->
+    <script src="script.js"></script>
+
+    <script>
+      // 1. Sinkronisasi Menu Aktif & Aksesibilitas
+      (function() {
+        var origSwitchMenu = window.switchMenu;
+        window.switchMenu = function(menu) {
+          if (typeof origSwitchMenu === "function") {
+            origSwitchMenu(menu);
+          }
+          var btnDetect = document.getElementById("btn-menu-detect");
+          var btnChat = document.getElementById("btn-menu-chat");
+
+          if (menu === "detect") {
+            btnDetect.className = "nav-tab-active flex-1 md:w-full flex items-center justify-center md:justify-start gap-3 px-4 py-3 rounded-xl font-bold transition-all text-sm whitespace-nowrap";
+            btnChat.className = "nav-tab-inactive flex-1 md:w-full flex items-center justify-center md:justify-start gap-3 px-4 py-3 rounded-xl font-semibold transition-all text-sm whitespace-nowrap";
+            btnDetect.setAttribute("aria-pressed", "true");
+            btnChat.setAttribute("aria-pressed", "false");
+          } else {
+            btnChat.className = "nav-tab-active flex-1 md:w-full flex items-center justify-center md:justify-start gap-3 px-4 py-3 rounded-xl font-bold transition-all text-sm whitespace-nowrap";
+            btnDetect.className = "nav-tab-inactive flex-1 md:w-full flex items-center justify-center md:justify-start gap-3 px-4 py-3 rounded-xl font-semibold transition-all text-sm whitespace-nowrap";
+            btnChat.setAttribute("aria-pressed", "true");
+            btnDetect.setAttribute("aria-pressed", "false");
+          }
+        };
+      })();
+
+      // 2. Format Kartu Hasil Deteksi agar Selaras dengan Desain
+      (function() {
+        var origTampilkan = window.tampilkanHasilDeteksi;
+        window.tampilkanHasilDeteksi = function(data) {
+          if (typeof origTampilkan === "function") {
+            origTampilkan(data);
+          }
+          document.querySelectorAll("#result-details > div").forEach(function(card) {
+            // Hapus stripe dekoratif kiri dari script lama
+            var stripe = card.querySelector(".absolute.top-0.left-0");
+            if (stripe) stripe.remove();
+            card.style.borderTop = "3px solid #d90429";
+            card.style.borderRadius = "14px";
+            card.style.borderColor = "#ded8ce";
+          });
+        };
+      })();
+    </script>
+  </body>
+</html>
