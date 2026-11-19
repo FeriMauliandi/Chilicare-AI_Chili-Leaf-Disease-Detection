@@ -2,7 +2,7 @@
 <html lang="id" class="scroll-smooth">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>ChiliCare AI: Diagnosis Cerdas Penyakit Tanaman Cabai</title>
     <meta
       name="description"
@@ -60,6 +60,21 @@
       };
     </script>
     <style>
+      html {
+        background-color: #0d2618;
+        overflow-x: hidden;
+        max-width: 100vw;
+        overscroll-behavior-x: none;
+      }
+
+      body {
+        overflow-x: hidden;
+        max-width: 100vw;
+        width: 100%;
+        overscroll-behavior-x: none;
+        touch-action: pan-y;
+      }
+
       :focus-visible {
         outline: 2px solid #d90429;
         outline-offset: 3px;
