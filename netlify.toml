@@ -1,0 +1,22 @@
+# Netlify Configuration for ChiliCare AI
+# Dokumentasi: https://docs.netlify.com/configure-builds/file-based-configuration/
+
+[build]
+  # Direktori yang dipublikasikan ke CDN Netlify
+  publish = "frontend"
+
+  # Static HTML/CSS/JS murni, tidak memerlukan build command
+  command = ""
+
+# Routing halaman:
+# 1. Mengarahkan root domain (/) untuk menyajikan landing page modern (landing.html)
+[[redirects]]
+  from = "/"
+  to = "/landing.html"
+  status = 200
+
+# 2. Mengarahkan path /app ke aplikasi deteksi penyakit & asisten chat (index.html)
+[[redirects]]
+  from = "/app"
+  to = "/index.html"
+  status = 200
