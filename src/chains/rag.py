@@ -26,7 +26,7 @@ def generate_narrative(disease_name):
             k=3,
             filter={"label": disease_name}
         )
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         print(f"Peringatan: Gagal melakukan pencarian vectorstore: {e}")
         results = []
 

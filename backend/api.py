@@ -7,7 +7,6 @@ import io
 import uvicorn
 import base64 
 import cv2 
-import numpy as np 
 import os
 from pydantic import BaseModel
 from fastapi.responses import StreamingResponse, FileResponse
@@ -31,8 +30,8 @@ app.add_middleware(
 )
 
 try:
-    model = YOLO("model/bestv11.pt")
-except Exception as e:
+    model = YOLO("model/best(v11).pt")
+except Exception as e:  # noqa: BLE001
     print(f"Error memuat model YOLO: {e}")
     model = None
 
@@ -105,8 +104,8 @@ async def detect_disease(file: UploadFile = File(...)):
             "image_base64": img_base64 
         }
 
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Terjadi kesalahan: {str(e)}")
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(status_code=500, detail=f"Terjadi kesalahan: {e}") from e
     
 class ChatMessage(BaseModel):
     role: str  # "user" atau "assistant"
@@ -144,8 +143,8 @@ async def ask_expert(request: QuestionRequest):
             media_type="text/event-stream"
         )
         
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Terjadi kesalahan pada LLM: {str(e)}")
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(status_code=500, detail=f"Terjadi kesalahan pada LLM: {e}") from e
 
 if os.path.exists("frontend"):
     app.mount("/", StaticFiles(directory="frontend", html=True), name="frontend")

@@ -1,4 +1,3 @@
-import pytest
 from langchain_core.documents import Document
 from src.ingestion.chunker import split_documents
 

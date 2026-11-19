@@ -76,7 +76,7 @@ class OpenRouterReranker(BaseDocumentCompressor):
 
             return reranked_docs[:self.top_n] if reranked_docs else doc_list[:self.top_n]
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             print(f"Peringatan: Gagal memanggil OpenRouter rerank ({e}). Menggunakan dokumen retrieval awal.")
             return doc_list[:self.top_n]
 
@@ -134,6 +134,6 @@ class OpenRouterReranker(BaseDocumentCompressor):
 
             return reranked_docs[:self.top_n] if reranked_docs else doc_list[:self.top_n]
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             print(f"Peringatan: Gagal memanggil async OpenRouter rerank ({e}). Menggunakan dokumen retrieval awal.")
             return doc_list[:self.top_n]

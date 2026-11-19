@@ -9,17 +9,20 @@ def load_data(source: str):
         documents = loader.load()
         
     elif source.lower().endswith(".pdf"):
-        if not os.path.exists(source): raise FileNotFoundError(f"File tidak ditemukan: {source}")
+        if not os.path.exists(source):
+            raise FileNotFoundError(f"File tidak ditemukan: {source}")
         loader = PyPDFLoader(source)
         documents = loader.load()
         
     elif source.lower().endswith(".md"):
-        if not os.path.exists(source): raise FileNotFoundError(f"File tidak ditemukan: {source}")
+        if not os.path.exists(source):
+            raise FileNotFoundError(f"File tidak ditemukan: {source}")
         loader = TextLoader(source, encoding="utf-8")
         documents = loader.load()
         
     elif source.lower().endswith(".csv"):
-        if not os.path.exists(source): raise FileNotFoundError(f"File tidak ditemukan: {source}")
+        if not os.path.exists(source):
+            raise FileNotFoundError(f"File tidak ditemukan: {source}")
         loader = CSVLoader(source, encoding="utf-8") 
         documents = loader.load()
         
