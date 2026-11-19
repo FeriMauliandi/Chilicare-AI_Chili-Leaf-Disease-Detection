@@ -315,19 +315,17 @@ async function handleSendChat(event) {
     const decoder = new TextDecoder("utf-8");
     
     let fullTextFromAPI = ""; // Tangki penampung teks super cepat dari server
-    let textToDisplay = "";   // Teks yang akan diteteskan ke layar perlahan-lahan
     let charIndex = 0;
 
     // A. Fungsi pengetik independen (Jalan di latar belakang)
-    // Angka 15 adalah kecepatan ketik (15 milidetik per huruf).
+    // Angka 15 adalah kecepatan ketik (15 milidetik per batch karakter).
     const typingInterval = setInterval(() => {
       // Jika masih ada huruf di tangki yang belum ditampilkan
       if (charIndex < fullTextFromAPI.length) {
-        // Keluarkan 4 huruf sekaligus agar kecepatan pas
-        textToDisplay += fullTextFromAPI.slice(charIndex, charIndex + 4);
-        charIndex += 4;
+        // Ambil karakter yang tersedia secara presisi tanpa melompati buffer yang belum terbaca
+        charIndex = Math.min(charIndex + 4, fullTextFromAPI.length);
         
-        aiBubble.innerHTML = parseMarkdown(textToDisplay);
+        aiBubble.innerHTML = parseMarkdown(fullTextFromAPI.slice(0, charIndex));
         scrollToBottom(chatBox);
       }
     }, 15); 
@@ -343,11 +341,15 @@ async function handleSendChat(event) {
             clearInterval(typingInterval);
             clearInterval(waitComplete);
 
+            // Pastikan teks akhir ter-render utuh sesuai respons server
+            aiBubble.innerHTML = parseMarkdown(fullTextFromAPI);
+            scrollToBottom(chatBox);
+
             // Simpan percakapan ke chatHistory lokal setelah streaming sukses
             chatHistory.push({ role: "user", content: question });
             chatHistory.push({ role: "assistant", content: fullTextFromAPI });
           }
-        }, 50);
+        }, 30);
         break;
       }
 
