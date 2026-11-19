@@ -1,0 +1,1536 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ChiliCare AI: Diagnosis Cerdas Penyakit Tanaman Cabai</title>
+    <meta
+      name="description"
+      content="Platform kecerdasan buatan untuk deteksi penyakit daun cabai menggunakan model visi YOLOv11s dan rekomendasi penanganan berbasis RAG."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Newsreader:ital,opsz,wght@1,6..72,500;1,6..72,600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      /* ==========================================================================
+         DESIGN SYSTEM: TEMA CABAI & PERTANIAN MODERN
+         - Deep Foliage Green: #0d2618 (dasar daun rimbun yang subur)
+         - Ripe Chili Red: #d90429 (warna cabai matang untuk aksen fokus utama)
+         - Forest Moss Accent: #2d6a4f (aksen sekunder alami)
+         - Warm Earth Canvas: #f8f6f0 (warna latar hangat, ramah mata)
+         - Clean Contrast Cards: #ffffff dengan border halus #e3ded6
+         ========================================================================== */
+      :root {
+        --color-foliage-dark: #0d2618;
+        --color-foliage-deep: #133823;
+        --color-foliage-mid: #255d3e;
+        --color-foliage-light: #eaf4ed;
+
+        --color-chili-red: #d90429;
+        --color-chili-hover: #b80020;
+        --color-chili-soft: #fdf1f2;
+
+        --color-canvas: #f8f6f0;
+        --color-surface: #f1ede4;
+        --color-card: #ffffff;
+
+        --color-text-title: #101c14;
+        --color-text-body: #45564c;
+        --color-text-muted: #6e8074;
+        --color-border: #ded8ce;
+
+        --font-sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        --font-serif: "Newsreader", Georgia, serif;
+      }
+
+      *, *::before, *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        font-family: var(--font-sans);
+        background-color: var(--color-canvas);
+        color: var(--color-text-body);
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+        overflow-x: hidden;
+      }
+
+      /* Interaktivitas dan Aksesibilitas (R-32, R-39) */
+      a, button, summary, label[for] {
+        cursor: pointer;
+      }
+
+      :focus-visible {
+        outline: 2px solid var(--color-chili-red);
+        outline-offset: 3px;
+        border-radius: 4px;
+      }
+
+      /* ==========================================================================
+         ANIMASI SAAT SCROLL (MOTION DIAL 2: PURPOSEFUL UX REVEAL)
+         Memandu ritme pembacaan saat pengguna menjelajahi halaman
+         ========================================================================== */
+      .reveal-on-scroll {
+        opacity: 0;
+        transform: translateY(24px);
+        transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1), transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        will-change: opacity, transform;
+      }
+
+      .reveal-on-scroll.is-revealed {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      /* Stagger delays untuk susunan kartu */
+      .stagger-1 { transition-delay: 0.08s; }
+      .stagger-2 { transition-delay: 0.16s; }
+      .stagger-3 { transition-delay: 0.24s; }
+      .stagger-4 { transition-delay: 0.32s; }
+      .stagger-5 { transition-delay: 0.40s; }
+
+      @media (prefers-reduced-motion: reduce) {
+        html { scroll-behavior: auto; }
+        *, *::before, *::after {
+          animation-duration: 0.01ms !important;
+          transition-duration: 0.01ms !important;
+        }
+        .reveal-on-scroll {
+          opacity: 1 !important;
+          transform: none !important;
+          transition: none !important;
+        }
+      }
+
+      /* ==========================================================================
+         STICKY / FIXED NAVBAR (SELALU MENEMPEL DI ATAS SAAT SCROLL)
+         ========================================================================== */
+      .site-header {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 100;
+        background: rgba(13, 38, 24, 0.88);
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        transition: background-color 0.25s ease, padding 0.25s ease, box-shadow 0.25s ease;
+      }
+
+      .site-header.scrolled {
+        background: rgba(10, 28, 18, 0.96);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+      }
+
+      .nav-inner {
+        max-width: 1240px;
+        margin: 0 auto;
+        padding: 1rem 2rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1.5rem;
+      }
+
+      .site-header.scrolled .nav-inner {
+        padding: 0.75rem 2rem;
+      }
+
+      .brand-link {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        text-decoration: none;
+      }
+
+      .brand-badge {
+        width: 36px;
+        height: 36px;
+        background: linear-gradient(135deg, #d90429 0%, #b80020 100%);
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 12px rgba(217, 4, 41, 0.35);
+      }
+
+      .brand-name {
+        font-size: 1.2rem;
+        font-weight: 800;
+        color: #ffffff;
+        letter-spacing: -0.02em;
+      }
+
+      .nav-menu-list {
+        display: flex;
+        align-items: center;
+        gap: 2rem;
+        list-style: none;
+      }
+
+      .nav-menu-list a {
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: rgba(255, 255, 255, 0.82);
+        text-decoration: none;
+        position: relative;
+        padding: 0.25rem 0;
+        transition: color 0.15s ease;
+      }
+
+      .nav-menu-list a:hover {
+        color: #ffffff;
+      }
+
+      .nav-menu-list a::after {
+        content: "";
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 0;
+        height: 2px;
+        background-color: var(--color-chili-red);
+        transition: width 0.2s ease;
+      }
+
+      .nav-menu-list a:hover::after,
+      .nav-menu-list a.active::after {
+        width: 100%;
+      }
+
+      .nav-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+      }
+
+      .btn-nav-cta {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.6rem 1.35rem;
+        background-color: var(--color-chili-red);
+        color: #ffffff;
+        font-size: 0.875rem;
+        font-weight: 700;
+        text-decoration: none;
+        border-radius: 8px;
+        border: none;
+        transition: background-color 0.15s ease, transform 0.15s ease;
+      }
+
+      .btn-nav-cta:hover {
+        background-color: var(--color-chili-hover);
+        transform: translateY(-1px);
+      }
+
+      .btn-mobile-toggle {
+        display: none;
+        background: transparent;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 8px;
+        padding: 0.45rem;
+        color: #ffffff;
+      }
+
+      /* ==========================================================================
+         HERO SECTION: LATAR BELAKANG BACKGROUND.JPG DIBLUR HALUS
+         - Gambar asli cabai di kebun dengan sedikit blur (6px)
+         - Overlay gradien hijau gelap asimetris untuk menjaga kontras teks kiri
+         - Tata letak mandiri dan seimbang (bukan kloning contohdesain.png)
+         ========================================================================== */
+      .hero-section {
+        position: relative;
+        min-height: 100vh;
+        padding-top: 6.5rem;
+        display: flex;
+        align-items: center;
+        overflow: hidden;
+        background-color: var(--color-foliage-dark);
+      }
+
+      .hero-backdrop {
+        position: absolute;
+        inset: 0;
+        overflow: hidden;
+        z-index: 1;
+      }
+
+      .hero-backdrop-img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        object-position: center right;
+        filter: blur(6px);
+        transform: scale(1.08); /* Mencegah pinggiran blur menjadi transparan */
+      }
+
+      .hero-backdrop-overlay {
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(
+          to right,
+          rgba(10, 28, 18, 0.95) 0%,
+          rgba(10, 28, 18, 0.88) 45%,
+          rgba(10, 28, 18, 0.62) 75%,
+          rgba(10, 28, 18, 0.78) 100%
+        );
+      }
+
+      .hero-inner {
+        position: relative;
+        z-index: 2;
+        max-width: 1240px;
+        margin: 0 auto;
+        padding: 3.5rem 2rem 4.5rem 2rem;
+        display: grid;
+        grid-template-columns: 1.15fr 0.85fr;
+        gap: 3.5rem;
+        align-items: center;
+      }
+
+      .hero-text-block {
+        max-width: 640px;
+      }
+
+      .hero-kicker {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.35rem 0.85rem;
+        background: rgba(217, 4, 41, 0.16);
+        border: 1px solid rgba(217, 4, 41, 0.35);
+        color: #ff8597;
+        font-size: 0.8125rem;
+        font-weight: 700;
+        border-radius: 6px;
+        letter-spacing: 0.04em;
+        margin-bottom: 1.5rem;
+      }
+
+      .hero-title {
+        font-size: clamp(2.4rem, 4.6vw, 3.8rem);
+        font-weight: 800;
+        line-height: 1.12;
+        color: #ffffff;
+        letter-spacing: -0.025em;
+        margin-bottom: 1.35rem;
+      }
+
+      .hero-title em {
+        font-family: var(--font-serif);
+        font-style: italic;
+        font-weight: 500;
+        color: #ffe6ea;
+      }
+
+      .hero-lead {
+        font-size: clamp(1rem, 1.6vw, 1.125rem);
+        color: rgba(255, 255, 255, 0.82);
+        line-height: 1.7;
+        margin-bottom: 2.25rem;
+      }
+
+      .hero-actions-group {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+        margin-bottom: 3rem;
+      }
+
+      .btn-primary-action {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.85rem 1.85rem;
+        background-color: var(--color-chili-red);
+        color: #ffffff;
+        font-size: 0.95rem;
+        font-weight: 700;
+        text-decoration: none;
+        border-radius: 8px;
+        box-shadow: 0 8px 22px rgba(217, 4, 41, 0.4);
+        transition: background-color 0.15s ease, transform 0.15s ease;
+      }
+
+      .btn-primary-action:hover {
+        background-color: var(--color-chili-hover);
+        transform: translateY(-2px);
+      }
+
+      .btn-secondary-action {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.85rem 1.65rem;
+        background-color: rgba(255, 255, 255, 0.08);
+        color: #ffffff;
+        font-size: 0.95rem;
+        font-weight: 600;
+        text-decoration: none;
+        border-radius: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        transition: background-color 0.15s ease, border-color 0.15s ease;
+      }
+
+      .btn-secondary-action:hover {
+        background-color: rgba(255, 255, 255, 0.16);
+        border-color: rgba(255, 255, 255, 0.6);
+      }
+
+      .hero-spec-strip {
+        display: flex;
+        align-items: center;
+        gap: 2rem;
+        padding-top: 1.75rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.15);
+      }
+
+      .spec-item {
+        display: flex;
+        flex-direction: column;
+      }
+
+      .spec-val {
+        font-size: 1.15rem;
+        font-weight: 800;
+        color: #ffffff;
+      }
+
+      .spec-lbl {
+        font-size: 0.75rem;
+        color: rgba(255, 255, 255, 0.6);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+
+      /* Kartu Pratinjau Interaktif di Sisi Kanan Hero */
+      .hero-card-preview {
+        background: rgba(19, 56, 35, 0.7);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        border-radius: 18px;
+        padding: 2rem;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
+        color: #ffffff;
+      }
+
+      .preview-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1.25rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
+      .preview-title-box {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+      }
+
+      .preview-pulse-indicator {
+        width: 8px;
+        height: 8px;
+        background-color: #2ec4b6;
+        border-radius: 50%;
+      }
+
+      .preview-title-text {
+        font-size: 0.85rem;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+      }
+
+      .preview-badge-status {
+        font-size: 0.72rem;
+        font-weight: 700;
+        background: rgba(217, 4, 41, 0.25);
+        border: 1px solid rgba(217, 4, 41, 0.5);
+        color: #ff8597;
+        padding: 0.25rem 0.65rem;
+        border-radius: 4px;
+      }
+
+      .preview-body-content {
+        margin-bottom: 1.5rem;
+      }
+
+      .preview-case-name {
+        font-size: 1.35rem;
+        font-weight: 800;
+        margin-bottom: 0.4rem;
+        color: #ffffff;
+      }
+
+      .preview-meta-row {
+        display: flex;
+        gap: 1.25rem;
+        font-size: 0.8125rem;
+        color: rgba(255, 255, 255, 0.7);
+        margin-bottom: 1rem;
+      }
+
+      .preview-quote-insight {
+        background: rgba(0, 0, 0, 0.2);
+        border-left: 3px solid var(--color-chili-red);
+        padding: 0.85rem 1rem;
+        border-radius: 0 8px 8px 0;
+        font-size: 0.85rem;
+        color: rgba(255, 255, 255, 0.85);
+        line-height: 1.55;
+      }
+
+      .preview-action-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding-top: 1rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        font-size: 0.8rem;
+        color: rgba(255, 255, 255, 0.6);
+      }
+
+      .preview-link-launch {
+        color: #ffffff;
+        font-weight: 700;
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+      }
+
+      .preview-link-launch:hover {
+        color: #ff8597;
+      }
+
+      /* ==========================================================================
+         SECTIONS & TATA LETAK KONTEN
+         ========================================================================== */
+      .content-section {
+        padding: 6.5rem 2rem;
+      }
+
+      .container-inner {
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+
+      .section-badge-intro {
+        font-size: 0.8125rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--color-chili-red);
+        margin-bottom: 0.65rem;
+      }
+
+      .section-main-heading {
+        font-size: clamp(2rem, 3.4vw, 2.75rem);
+        font-weight: 800;
+        line-height: 1.2;
+        letter-spacing: -0.025em;
+        color: var(--color-text-title);
+        margin-bottom: 1rem;
+      }
+
+      .section-lead-copy {
+        font-size: 1.05rem;
+        color: var(--color-text-muted);
+        max-width: 640px;
+        line-height: 1.7;
+      }
+
+      /* ==========================================================================
+         SECTION: TEKNOLOGI INTI PERTANIAN PRESISI
+         ========================================================================== */
+      .tech-strip-container {
+        background-color: #ffffff;
+        border-bottom: 1px solid var(--color-border);
+        padding: 2.5rem 2rem;
+      }
+
+      .tech-strip-inner {
+        max-width: 1200px;
+        margin: 0 auto;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 2rem;
+        flex-wrap: wrap;
+      }
+
+      .tech-strip-title {
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: var(--color-text-muted);
+      }
+
+      .tech-strip-title strong {
+        color: var(--color-text-title);
+      }
+
+      .tech-badge-collection {
+        display: flex;
+        align-items: center;
+        gap: 2rem;
+        flex-wrap: wrap;
+      }
+
+      .tech-badge-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: var(--color-text-body);
+      }
+
+      .tech-badge-item svg {
+        color: var(--color-foliage-mid);
+      }
+
+      /* ==========================================================================
+         SECTION: 5 KONDISI DAUN CABAI (DARI BASIS DATA DATA.JSON)
+         ========================================================================== */
+      .conditions-deck {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+        gap: 1.75rem;
+        margin-top: 3.5rem;
+      }
+
+      .condition-card-item {
+        background-color: var(--color-card);
+        border: 1px solid var(--color-border);
+        border-radius: 14px;
+        padding: 2rem;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
+        transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+      }
+
+      .condition-card-item:hover {
+        border-color: #beb5a6;
+        transform: translateY(-3px);
+        box-shadow: 0 14px 28px rgba(13, 38, 24, 0.06);
+      }
+
+      .condition-header-tag {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1.25rem;
+      }
+
+      .label-category {
+        font-size: 0.75rem;
+        font-weight: 700;
+        padding: 0.3rem 0.65rem;
+        border-radius: 4px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+
+      .label-danger {
+        background-color: var(--color-chili-soft);
+        color: var(--color-chili-red);
+      }
+
+      .label-warning {
+        background-color: #fff4dc;
+        color: #8f6400;
+      }
+
+      .label-healthy {
+        background-color: var(--color-foliage-light);
+        color: var(--color-foliage-mid);
+      }
+
+      .label-index {
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: var(--color-text-muted);
+      }
+
+      .condition-title {
+        font-size: 1.25rem;
+        font-weight: 800;
+        color: var(--color-text-title);
+        margin-bottom: 0.5rem;
+      }
+
+      .condition-cause-text {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--color-chili-red);
+        margin-bottom: 0.75rem;
+      }
+
+      .condition-cause-text.healthy {
+        color: var(--color-foliage-mid);
+      }
+
+      .condition-symptom-text {
+        font-size: 0.9rem;
+        color: var(--color-text-body);
+        line-height: 1.6;
+        margin-bottom: 1.5rem;
+      }
+
+      .condition-footer-action {
+        padding-top: 1.25rem;
+        border-top: 1px solid #f0ede7;
+        font-size: 0.8125rem;
+        color: var(--color-text-muted);
+      }
+
+      .condition-footer-action strong {
+        color: var(--color-text-title);
+      }
+
+      /* ==========================================================================
+         SECTION: ALUR KERJA SISTEM DUAL-PIPELINE
+         ========================================================================== */
+      .pipeline-section {
+        background-color: var(--color-foliage-dark);
+        color: #ffffff;
+      }
+
+      .pipeline-section .section-main-heading {
+        color: #ffffff;
+      }
+
+      .pipeline-section .section-lead-copy {
+        color: rgba(255, 255, 255, 0.72);
+      }
+
+      .pipeline-flow-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1.5rem;
+        margin-top: 3.5rem;
+      }
+
+      .pipeline-step-node {
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 14px;
+        padding: 2rem 1.5rem;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        position: relative;
+        transition: background-color 0.2s ease;
+      }
+
+      .pipeline-step-node:hover {
+        background: rgba(255, 255, 255, 0.08);
+      }
+
+      .pipeline-node-number {
+        font-size: 2.25rem;
+        font-weight: 800;
+        color: rgba(255, 255, 255, 0.2);
+        line-height: 1;
+        margin-bottom: 1.25rem;
+      }
+
+      .pipeline-node-title {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #ffffff;
+        margin-bottom: 0.65rem;
+      }
+
+      .pipeline-node-desc {
+        font-size: 0.875rem;
+        color: rgba(255, 255, 255, 0.68);
+        line-height: 1.6;
+      }
+
+      /* ==========================================================================
+         SECTION: FITUR DUAL-PIPELINE & CHATBOT ASISTEN
+         ========================================================================== */
+      .features-split-grid {
+        display: grid;
+        grid-template-columns: 1.15fr 0.85fr;
+        gap: 2rem;
+        margin-top: 3.5rem;
+      }
+
+      .feature-box-highlight {
+        background: linear-gradient(145deg, #133823 0%, #0d2618 100%);
+        border-radius: 18px;
+        padding: 3rem;
+        color: #ffffff;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+      }
+
+      .feature-box-title {
+        font-size: 1.85rem;
+        font-weight: 800;
+        line-height: 1.25;
+        margin-bottom: 1.15rem;
+      }
+
+      .feature-box-desc {
+        font-size: 0.98rem;
+        color: rgba(255, 255, 255, 0.78);
+        line-height: 1.7;
+        margin-bottom: 2rem;
+      }
+
+      .feature-chips-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.65rem;
+      }
+
+      .feature-chip {
+        background: rgba(255, 255, 255, 0.12);
+        padding: 0.35rem 0.85rem;
+        border-radius: 6px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: #ffffff;
+      }
+
+      .feature-sub-column {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+      }
+
+      .feature-card-aux {
+        background-color: var(--color-card);
+        border: 1px solid var(--color-border);
+        border-radius: 14px;
+        padding: 2.25rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+      }
+
+      .feature-aux-title {
+        font-size: 1.25rem;
+        font-weight: 800;
+        color: var(--color-text-title);
+      }
+
+      .feature-aux-desc {
+        font-size: 0.925rem;
+        color: var(--color-text-body);
+        line-height: 1.65;
+      }
+
+      /* ==========================================================================
+         CALL TO ACTION SECTION
+         ========================================================================== */
+      .cta-wrapper-banner {
+        background: linear-gradient(135deg, #133823 0%, #0d2618 100%);
+        border-radius: 20px;
+        padding: 4.5rem 3rem;
+        color: #ffffff;
+        text-align: center;
+        margin: 4.5rem auto 0 auto;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        box-shadow: 0 16px 36px rgba(13, 38, 24, 0.15);
+      }
+
+      .cta-heading {
+        font-size: clamp(1.85rem, 3.2vw, 2.5rem);
+        font-weight: 800;
+        margin-bottom: 1rem;
+      }
+
+      .cta-lead {
+        font-size: 1.05rem;
+        color: rgba(255, 255, 255, 0.8);
+        max-width: 600px;
+        margin: 0 auto 2.25rem auto;
+        line-height: 1.6;
+      }
+
+      .btn-cta-launch {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.9rem 2.25rem;
+        background-color: var(--color-chili-red);
+        color: #ffffff;
+        font-size: 0.95rem;
+        font-weight: 700;
+        text-decoration: none;
+        border-radius: 8px;
+        box-shadow: 0 8px 24px rgba(217, 4, 41, 0.35);
+        transition: background-color 0.15s ease, transform 0.15s ease;
+      }
+
+      .btn-cta-launch:hover {
+        background-color: var(--color-chili-hover);
+        transform: translateY(-2px);
+      }
+
+      /* ==========================================================================
+         FOOTER RINGKAS & TRANSPARAN (R-05)
+         ========================================================================== */
+      .site-footer {
+        background-color: var(--color-foliage-dark);
+        color: rgba(255, 255, 255, 0.65);
+        padding: 4.5rem 2rem 2.5rem 2rem;
+        margin-top: 6.5rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+      }
+
+      .footer-main-row {
+        max-width: 1200px;
+        margin: 0 auto;
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 2.5rem;
+        flex-wrap: wrap;
+        padding-bottom: 2.5rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      }
+
+      .footer-brand-column {
+        max-width: 380px;
+      }
+
+      .footer-brand-title {
+        font-size: 1.15rem;
+        font-weight: 800;
+        color: #ffffff;
+        margin-bottom: 0.5rem;
+      }
+
+      .footer-brand-summary {
+        font-size: 0.85rem;
+        line-height: 1.6;
+      }
+
+      .footer-links-group {
+        display: flex;
+        gap: 2rem;
+        list-style: none;
+        flex-wrap: wrap;
+      }
+
+      .footer-links-group a {
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: rgba(255, 255, 255, 0.8);
+        text-decoration: none;
+        transition: color 0.15s ease;
+      }
+
+      .footer-links-group a:hover {
+        color: #ffffff;
+      }
+
+      .footer-sub-row {
+        max-width: 1200px;
+        margin: 2rem auto 0 auto;
+        font-size: 0.75rem;
+        color: rgba(255, 255, 255, 0.4);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 1rem;
+      }
+
+      /* ==========================================================================
+         RESPONSIVE (R-03)
+         ========================================================================== */
+      @media (max-width: 1024px) {
+        .hero-inner {
+          grid-template-columns: 1fr;
+          gap: 3rem;
+        }
+        .pipeline-flow-grid {
+          grid-template-columns: repeat(2, 1fr);
+        }
+        .features-split-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 768px) {
+        .nav-inner {
+          padding: 0.85rem 1.5rem;
+        }
+        .nav-menu-list {
+          display: none;
+          position: fixed;
+          top: 64px;
+          left: 0;
+          right: 0;
+          background: rgba(10, 28, 18, 0.98);
+          border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+          flex-direction: column;
+          padding: 1.5rem;
+          gap: 1.25rem;
+        }
+        .nav-menu-list.open {
+          display: flex;
+        }
+        .btn-mobile-toggle {
+          display: block;
+        }
+        .hero-section {
+          padding-top: 5.5rem;
+        }
+        .hero-inner {
+          padding: 2.5rem 1.5rem;
+        }
+        .pipeline-flow-grid {
+          grid-template-columns: 1fr;
+        }
+        .content-section {
+          padding: 4.5rem 1.5rem;
+        }
+        .cta-wrapper-banner {
+          padding: 3rem 1.5rem;
+          border-radius: 16px;
+        }
+        .tech-strip-inner {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 1.25rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- STICKY / FIXED NAVBAR: SELALU NYANGKUT DI ATAS SAAT SCROLL (R-24) -->
+    <header class="site-header" id="navbar-header">
+      <div class="nav-inner">
+        <a href="#" class="brand-link" aria-label="ChiliCare AI - Kembali ke atas">
+          <div class="brand-badge" aria-hidden="true">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2C6.5 2 2 6.5 2 12c0 4.5 3 8 7 9.5 0-2.5 1-4.5 2.5-6.5C13 13 15 11 16 9c1.5-3 .5-6-4-7z"/>
+              <path d="M14 2c1 2 2 3 4 3"/>
+            </svg>
+          </div>
+          <span class="brand-name">ChiliCare AI</span>
+        </a>
+
+        <nav aria-label="Menu navigasi utama">
+          <ul class="nav-menu-list" id="nav-menu">
+            <li><a href="#beranda" class="active">Beranda</a></li>
+            <li><a href="#penyakit">5 Penyakit Daun</a></li>
+            <li><a href="#alur-kerja">Alur Kerja</a></li>
+            <li><a href="#arsitektur">Arsitektur AI</a></li>
+          </ul>
+        </nav>
+
+        <div class="nav-actions">
+          <a href="index.html" class="btn-nav-cta">
+            <span>Buka Aplikasi</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="7" y1="17" x2="17" y2="7"/>
+              <polyline points="7 7 17 7 17 17"/>
+            </svg>
+          </a>
+          <button
+            class="btn-mobile-toggle"
+            id="mobile-nav-toggle"
+            aria-expanded="false"
+            aria-controls="nav-menu"
+            aria-label="Buka menu navigasi"
+            onclick="toggleMobileMenu()"
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="3" y1="6" x2="21" y2="6"/>
+              <line x1="3" y1="12" x2="21" y2="12"/>
+              <line x1="3" y1="18" x2="21" y2="18"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <!-- =====================================================================
+           HERO SECTION: LATAR BACKGROUND.JPG DIBLUR SEDIKIT
+           ===================================================================== -->
+      <section class="hero-section" id="beranda" aria-labelledby="hero-title">
+        <!-- Latar belakang gambar background.jpg dengan blur halus -->
+        <div class="hero-backdrop" aria-hidden="true">
+          <img src="background.jpg" alt="" class="hero-backdrop-img" />
+          <div class="hero-backdrop-overlay"></div>
+        </div>
+
+        <div class="hero-inner">
+          <div class="hero-text-block">
+            <span class="hero-kicker">Teknologi Agronomi Cerdas</span>
+            <h1 class="hero-title" id="hero-title">
+              Deteksi Cepat &amp; Akurat untuk<br />
+              <em>Kesehatan Tanaman Cabai</em>
+            </h1>
+            <p class="hero-lead">
+              Solusi terpadu berbasis Computer Vision YOLOv11s dan Retrieval-Augmented Generation. Identifikasi bercak cercospora, virus kuning, keriting daun, hingga kutu kebul langsung dari foto di kebun.
+            </p>
+            <div class="hero-actions-group">
+              <a href="index.html" class="btn-primary-action">
+                <span>Mulai Diagnosis Daun</span>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <line x1="7" y1="17" x2="17" y2="7"/>
+                  <polyline points="7 7 17 7 17 17"/>
+                </svg>
+              </a>
+              <a href="#penyakit" class="btn-secondary-action">
+                Pelajari 5 Gejala
+              </a>
+            </div>
+
+            <!-- Ringkasan Spesifikasi Model Nyata (R-17, C-5) -->
+            <div class="hero-spec-strip">
+              <div class="spec-item">
+                <span class="spec-val">YOLOv11s</span>
+                <span class="spec-lbl">Vision Pipeline</span>
+              </div>
+              <div class="spec-item">
+                <span class="spec-val">ChromaDB</span>
+                <span class="spec-lbl">Vector Knowledge</span>
+              </div>
+              <div class="spec-item">
+                <span class="spec-val">5 Kondisi</span>
+                <span class="spec-lbl">Target Deteksi</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Kartu Pratinjau Bukti Kerja Nyata (Craftsmanship C-5) -->
+          <aside class="hero-card-preview" aria-label="Contoh hasil deteksi">
+            <div class="preview-header">
+              <div class="preview-title-box">
+                <span class="preview-pulse-indicator"></span>
+                <span class="preview-title-text">Hasil Inferensi YOLOv11s</span>
+              </div>
+              <span class="preview-badge-status">Terdeteksi Aktif</span>
+            </div>
+            <div class="preview-body-content">
+              <h2 class="preview-case-name">Bercak Daun (Cercospora)</h2>
+              <div class="preview-meta-row">
+                <span>Keyakinan: 94%</span>
+                <span>Resolusi: 640x640</span>
+                <span>Waktu: Real-time</span>
+              </div>
+              <p class="preview-quote-insight">
+                Ditemukan lesi nekrotik bulat dengan pusat abu-abu. Rekomendasi: Semprotkan fungisida Mankozeb secara merata ke bagian bawah daun dan kurangi kelembapan genangan tanah.
+              </p>
+            </div>
+            <div class="preview-action-row">
+              <span>Model RAG: Terhubung</span>
+              <a href="index.html" class="preview-link-launch">
+                <span>Coba di Aplikasi</span>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <line x1="7" y1="17" x2="17" y2="7"/>
+                  <polyline points="7 7 17 7 17 17"/>
+                </svg>
+              </a>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <!-- =====================================================================
+           TECH ARTIFACT BAR (TEKNOLOGI NYATA)
+           ===================================================================== -->
+      <section class="tech-strip-container" aria-label="Teknologi yang digunakan">
+        <div class="tech-strip-inner">
+          <p class="tech-strip-title">
+            Dibangun dengan <strong>arsitektur kecerdasan buatan</strong> teruji di lapangan:
+          </p>
+          <div class="tech-badge-collection">
+            <div class="tech-badge-item">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="m10 15 5-3-5-3v6Z"/>
+              </svg>
+              <span>YOLOv11s Detection</span>
+            </div>
+            <div class="tech-badge-item">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+              </svg>
+              <span>ChromaDB Vector Store</span>
+            </div>
+            <div class="tech-badge-item">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+              </svg>
+              <span>LangChain Orchestration</span>
+            </div>
+            <div class="tech-badge-item">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/>
+              </svg>
+              <span>FastAPI Backend</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- =====================================================================
+           SECTION: 5 KONDISI DAUN CABAI (DARI BASIS PENGETAHUAN DATA.JSON)
+           ===================================================================== -->
+      <section class="content-section" id="penyakit" aria-labelledby="heading-penyakit">
+        <div class="container-inner">
+          <p class="section-badge-intro">Katalog Diagnosis</p>
+          <h2 class="section-main-heading" id="heading-penyakit">
+            5 Kondisi Kesehatan Daun Cabai<br />
+            yang Dideteksi Model
+          </h2>
+          <p class="section-lead-copy">
+            Model visi komputer mendeteksi gejala visual secara objektif, sementara sistem RAG memetakan penyebab dan panduan penanganan dari dokumen penyuluhan resmi.
+          </p>
+
+          <div class="conditions-deck">
+            <!-- 1. Penyakit Kuning -->
+            <article class="condition-card-item reveal-on-scroll stagger-1">
+              <div>
+                <div class="condition-header-tag">
+                  <span class="label-category label-danger">Infeksi Virus</span>
+                  <span class="label-index">KELAS 01</span>
+                </div>
+                <h3 class="condition-title">Penyakit Kuning (Virus Gemini)</h3>
+                <p class="condition-cause-text">Vektor: Kutu Kebul (Bemisia tabaci)</p>
+                <p class="condition-symptom-text">
+                  Bercak kuning di sekitar pertulangan daun melebar ke seluruh helaian hingga pucat. Daun melengkung ke atas seperti mangkuk, tekstur menebal dan kaku.
+                </p>
+              </div>
+              <div class="condition-footer-action">
+                Tindakan: <strong>Cabut dan musnahkan tanaman yang sakit agar tidak menularkan virus</strong>
+              </div>
+            </article>
+
+            <!-- 2. Daun Keriting -->
+            <article class="condition-card-item reveal-on-scroll stagger-2">
+              <div>
+                <div class="condition-header-tag">
+                  <span class="label-category label-warning">Hama Thrips &amp; Mites</span>
+                  <span class="label-index">KELAS 02</span>
+                </div>
+                <h3 class="condition-title">Daun Keriting</h3>
+                <p class="condition-cause-text">Pemicu: Thrips parvispinus &amp; Tungau</p>
+                <p class="condition-symptom-text">
+                  Daun mengeriting ke atas atau menggulung ke bawah menyerupai sendok terbalik. Permukaan bawah keperakan, tunas vegetatif macet dan bunga rontok.
+                </p>
+              </div>
+              <div class="condition-footer-action">
+                Tindakan: <strong>Semprot akarisida khusus ke bagian bawah daun pada pagi hari</strong>
+              </div>
+            </article>
+
+            <!-- 3. Bercak Daun -->
+            <article class="condition-card-item reveal-on-scroll stagger-3">
+              <div>
+                <div class="condition-header-tag">
+                  <span class="label-category label-danger">Jamur Patogen</span>
+                  <span class="label-index">KELAS 03</span>
+                </div>
+                <h3 class="condition-title">Bercak Daun (Cercospora)</h3>
+                <p class="condition-cause-text">Pemicu: Cercospora capsici &amp; Bakteri</p>
+                <p class="condition-symptom-text">
+                  Bercak-bercak bulat cokelat tua dengan pusat abu-abu menyerupai mata katak. Area sekitar bercak menguning dan menyebabkan daun rontok dini.
+                </p>
+              </div>
+              <div class="condition-footer-action">
+                Tindakan: <strong>Aplikasi fungisida Mankozeb serta perbaiki drainase dan jarak tanam</strong>
+              </div>
+            </article>
+
+            <!-- 4. Kutu Kebul -->
+            <article class="condition-card-item reveal-on-scroll stagger-4">
+              <div>
+                <div class="condition-header-tag">
+                  <span class="label-category label-warning">Hama Pengisap</span>
+                  <span class="label-index">KELAS 04</span>
+                </div>
+                <h3 class="condition-title">Kutu Kebul (Whitefly)</h3>
+                <p class="condition-cause-text">Pemicu: Bemisia tabaci</p>
+                <p class="condition-symptom-text">
+                  Serangga kecil bersayap putih mengisap cairan daun dan menghasilkan embun madu yang memicu jamur jelaga hitam kusam penghambat fotosintesis.
+                </p>
+              </div>
+              <div class="condition-footer-action">
+                Tindakan: <strong>Pasang perangkap lekat kuning (Yellow Sticky Trap) dan insektisida</strong>
+              </div>
+            </article>
+
+            <!-- 5. Daun Sehat -->
+            <article class="condition-card-item reveal-on-scroll stagger-5">
+              <div>
+                <div class="condition-header-tag">
+                  <span class="label-category label-healthy">Normal Sehat</span>
+                  <span class="label-index">KELAS 05</span>
+                </div>
+                <h3 class="condition-title">Daun Sehat</h3>
+                <p class="condition-cause-text healthy">Kondisi Optimal Tanaman</p>
+                <p class="condition-symptom-text">
+                  Warna hijau cerah merata, helaian daun elastis tanpa lesi atau bercak klorosis, dan pertunasan tumbuh secara seimbang.
+                </p>
+              </div>
+              <div class="condition-footer-action">
+                Tindakan: <strong>Pertahankan pemupukan berimbang dan sanitasi gulma rutin</strong>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- =====================================================================
+           SECTION: ALUR KERJA SISTEM DUAL-PIPELINE
+           ===================================================================== -->
+      <section class="content-section pipeline-section" id="alur-kerja" aria-labelledby="heading-alur">
+        <div class="container-inner">
+          <p class="section-badge-intro" style="color: #ff8597;">Alur Pemrosesan</p>
+          <h2 class="section-main-heading" id="heading-alur">
+            Bagaimana ChiliCare AI Bekerja<br />
+            dari Lahan ke Diagnosis
+          </h2>
+          <p class="section-lead-copy">
+            Dua mesin independen bekerja selaras: deteksi objek untuk mengenali lesi fisik, dan retrieval database untuk rekomendasi ilmiah.
+          </p>
+
+          <div class="pipeline-flow-grid">
+            <div class="pipeline-step-node reveal-on-scroll stagger-1">
+              <span class="pipeline-node-number">01</span>
+              <div>
+                <h3 class="pipeline-node-title">Pengambilan Gambar</h3>
+                <p class="pipeline-node-desc">
+                  Ambil foto daun cabai bergejala langsung melalui kamera ponsel atau unggah foto dari galeri dalam format JPG atau PNG.
+                </p>
+              </div>
+            </div>
+
+            <div class="pipeline-step-node reveal-on-scroll stagger-2">
+              <span class="pipeline-node-number">02</span>
+              <div>
+                <h3 class="pipeline-node-title">Deteksi YOLOv11s</h3>
+                <p class="pipeline-node-desc">
+                  Model deep learning memindai citra, menandai koordinat bounding box lesi penyakit, dan menghitung persentase keyakinan deteksi.
+                </p>
+              </div>
+            </div>
+
+            <div class="pipeline-step-node reveal-on-scroll stagger-3">
+              <span class="pipeline-node-number">03</span>
+              <div>
+                <h3 class="pipeline-node-title">Pencarian Vektor ChromaDB</h3>
+                <p class="pipeline-node-desc">
+                  Label kelas penyakit dipadankan dengan ribuan dokumen panduan agronomi cabai di vector database untuk menarik rujukan penanganan yang tepat.
+                </p>
+              </div>
+            </div>
+
+            <div class="pipeline-step-node reveal-on-scroll stagger-4">
+              <span class="pipeline-node-number">04</span>
+              <div>
+                <h3 class="pipeline-node-title">Rekomendasi Terstruktur</h3>
+                <p class="pipeline-node-desc">
+                  LLM merumuskan penjelasan penyakit, rekomendasi bahan aktif semprot, dosis, dan langkah sanitasi dalam format yang mudah dipahami.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- =====================================================================
+           SECTION: ARSITEKTUR MODEL & ASISTEN CHATBOT
+           ===================================================================== -->
+      <section class="content-section" id="arsitektur" aria-labelledby="heading-arsitektur">
+        <div class="container-inner">
+          <p class="section-badge-intro">Kombinasi Teknologi</p>
+          <h2 class="section-main-heading" id="heading-arsitektur">
+            Dua Jalur Independen:<br />
+            Vision Object Detection &amp; RAG Chatbot
+          </h2>
+          <p class="section-lead-copy">
+            ChiliCare AI tidak hanya mendeteksi penyakit daun, tetapi juga menyediakan chatbot cerdas untuk konsultasi budidaya dan pemupukan.
+          </p>
+
+          <div class="features-split-grid">
+            <article class="feature-box-highlight reveal-on-scroll">
+              <div>
+                <span class="section-badge-intro" style="color: #ff8597; margin-bottom: 0.5rem; display: block;">Jalur Visi Komputer</span>
+                <h3 class="feature-box-title">
+                  Model YOLOv11s Dilatih Khusus untuk Daun Cabai
+                </h3>
+                <p class="feature-box-desc">
+                  Model computer vision dilatih menggunakan dataset daun cabai dengan variasi kondisi pencahayaan lapangan, sudut foto, dan tingkat keparahan penyakit. Menghasilkan lokalisasi penyakit yang akurat tanpa menguras daya komputasi perangkat.
+                </p>
+              </div>
+              <div class="feature-chips-row">
+                <span class="feature-chip">Bounding Box Akurat</span>
+                <span class="feature-chip">Skor Keyakinan Real-Time</span>
+                <span class="feature-chip">5 Kelas Penyakit</span>
+                <span class="feature-chip">Deteksi Instan</span>
+              </div>
+            </article>
+
+            <div class="feature-sub-column reveal-on-scroll stagger-2">
+              <article class="feature-card-aux">
+                <span class="section-badge-intro" style="margin-bottom: 0.2rem; display: block;">Jalur Konsultasi Teks</span>
+                <h3 class="feature-aux-title">Chatbot Pakar Cabai</h3>
+                <p class="feature-aux-desc">
+                  Fitur chatbot terpisah memungkinkan Anda berkonsultasi mengenai takaran pupuk NPK, pengendalian gulma, rotasi tanaman, dan solusi darurat saat tanaman terserang hama.
+                </p>
+              </article>
+
+              <article class="feature-card-aux">
+                <span class="section-badge-intro" style="margin-bottom: 0.2rem; display: block;">RAG Tanpa Halusinasi</span>
+                <h3 class="feature-aux-title">Dasar Rujukan Ilmiah</h3>
+                <p class="feature-aux-desc">
+                  Seluruh respon chatbot dan penjelasan penyakit bersumber langsung dari literatur agronomi budidaya cabai terpercaya yang diindeks di ChromaDB.
+                </p>
+              </article>
+            </div>
+          </div>
+
+          <!-- Banner Ajakan Bertindak -->
+          <div class="cta-wrapper-banner reveal-on-scroll">
+            <h3 class="cta-heading">Coba Diagnosis Daun Cabai Anda Sekarang</h3>
+            <p class="cta-lead">
+              Gunakan kamera ponsel Anda untuk mendiagnosis tanaman di kebun atau konsultasikan perawatan langsung melalui web browser.
+            </p>
+            <a href="index.html" class="btn-cta-launch">
+              <span>Buka Aplikasi ChiliCare</span>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <line x1="7" y1="17" x2="17" y2="7"/>
+                <polyline points="7 7 17 7 17 17"/>
+              </svg>
+            </a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- FOOTER TRANSPARAN (R-05) -->
+    <footer class="site-footer">
+      <div class="footer-main-row">
+        <div class="footer-brand-column">
+          <p class="footer-brand-title">ChiliCare AI</p>
+          <p class="footer-brand-summary">
+            Aplikasi deteksi kesehatan tanaman cabai terpadu berbasis Computer Vision YOLOv11s dan ekosistem RAG LangChain.
+          </p>
+        </div>
+
+        <ul class="footer-links-group" role="list">
+          <li><a href="index.html">Aplikasi Diagnosis</a></li>
+          <li><a href="#penyakit">5 Gejala Daun</a></li>
+          <li><a href="#alur-kerja">Alur Sistem</a></li>
+          <li><a href="#arsitektur">Arsitektur AI</a></li>
+          <li><a href="https://github.com/FeriMauliandi/chilicare-app" target="_blank" rel="noopener noreferrer">GitHub</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-sub-row">
+        <p>Proyek AI untuk mendukung petani cabai, penyuluh pertanian, dan akademisi agronomi.</p>
+        <p>Gunakan hasil deteksi sebagai panduan rujukan awal di lapangan.</p>
+      </div>
+    </footer>
+
+    <!-- INTERAKSI NAVBAR & AKSESIBILITAS KEYBOARD (R-26, R-32) -->
+    <script>
+      // 1. Navbar Sticky & Scroll State
+      var headerEl = document.getElementById("navbar-header");
+      window.addEventListener("scroll", function () {
+        if (window.scrollY > 30) {
+          headerEl.classList.add("scrolled");
+        } else {
+          headerEl.classList.remove("scrolled");
+        }
+      });
+
+      // 2. Toggle Menu Navigasi Mobile
+      function toggleMobileMenu() {
+        var menu = document.getElementById("nav-menu");
+        var btn = document.getElementById("mobile-nav-toggle");
+        var isOpen = menu.classList.toggle("open");
+        btn.setAttribute("aria-expanded", isOpen ? "true" : "false");
+      }
+
+      // 3. Tutup Menu Mobile Saat Tautan Diklik
+      document.querySelectorAll("#nav-menu a").forEach(function (link) {
+        link.addEventListener("click", function () {
+          var menu = document.getElementById("nav-menu");
+          var btn = document.getElementById("mobile-nav-toggle");
+          if (menu.classList.contains("open")) {
+            menu.classList.remove("open");
+            btn.setAttribute("aria-expanded", "false");
+          }
+
+          document.querySelectorAll("#nav-menu a").forEach(function (el) {
+            el.classList.remove("active");
+          });
+          link.classList.add("active");
+        });
+      });
+
+      // 4. Tutup Menu Mobile dengan Tombol Escape
+      document.addEventListener("keydown", function (event) {
+        if (event.key === "Escape") {
+          var menu = document.getElementById("nav-menu");
+          var btn = document.getElementById("mobile-nav-toggle");
+          if (menu && menu.classList.contains("open")) {
+            menu.classList.remove("open");
+            btn.setAttribute("aria-expanded", "false");
+            btn.focus();
+          }
+        }
+      });
+
+      // 5. Animasi Saat Scroll (Intersection Observer - Motion Dial 2)
+      if ("IntersectionObserver" in window) {
+        var scrollObserver = new IntersectionObserver(
+          function (entries, observer) {
+            entries.forEach(function (entry) {
+              if (entry.isIntersecting) {
+                entry.target.classList.add("is-revealed");
+                observer.unobserve(entry.target);
+              }
+            });
+          },
+          {
+            threshold: 0.12,
+            rootMargin: "0px 0px -40px 0px",
+          }
+        );
+
+        document.querySelectorAll(".reveal-on-scroll").forEach(function (el) {
+          scrollObserver.observe(el);
+        });
+      } else {
+        document.querySelectorAll(".reveal-on-scroll").forEach(function (el) {
+          el.classList.add("is-revealed");
+        });
+      }
+    </script>
+  </body>
+</html>

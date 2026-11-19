@@ -4,8 +4,16 @@
 // const API_DETECT_URL = "https://r7sc5m17-8000.asse.devtunnels.ms/detect";
 // const API_ASK_URL = "https://r7sc5m17-8000.asse.devtunnels.ms/ask";
 
-const API_DETECT_URL = "https://feryms-chilicareai.hf.space/detect";
-const API_ASK_URL = "https://feryms-chilicareai.hf.space/ask";
+// Endpoint dinamis: gunakan relative path jika di-host di HF Space / localhost, atau URL absolut sebagai fallback
+const IS_HF_OR_LOCAL = typeof window !== "undefined" && (
+  window.location.hostname.includes("hf.space") ||
+  window.location.hostname.includes("huggingface.co") ||
+  window.location.hostname === "localhost" ||
+  window.location.hostname === "127.0.0.1"
+);
+const API_BASE = IS_HF_OR_LOCAL ? "" : "https://feryms-chilicareai.hf.space";
+const API_DETECT_URL = `${API_BASE}/detect`;
+const API_ASK_URL = `${API_BASE}/ask`;
 
 let selectedFile = null;
 let chatHistory = [];

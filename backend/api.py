@@ -1,5 +1,5 @@
 from typing import List, Optional
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from ultralytics import YOLO
 from PIL import Image
@@ -8,8 +8,10 @@ import uvicorn
 import base64 
 import cv2 
 import numpy as np 
+import os
 from pydantic import BaseModel
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 from langchain_core.messages import HumanMessage, AIMessage
 from src.chains.rag import generate_narrative
 from src.chains.chain import create_rag_chain
@@ -34,9 +36,22 @@ except Exception as e:
     print(f"Error memuat model YOLO: {e}")
     model = None
 
-@app.get("/")
-def read_root():
+@app.get("/api/health")
+def api_health():
     return {"message": "Selamat datang di ChiliCare API. Gunakan endpoint /detect untuk inferensi."}
+
+@app.get("/")
+async def read_root(request: Request):
+    accept = request.headers.get("accept", "")
+    if "text/html" in accept and os.path.exists("frontend/landing.html"):
+        return FileResponse("frontend/landing.html")
+    return {"message": "Selamat datang di ChiliCare API. Gunakan endpoint /detect untuk inferensi."}
+
+@app.get("/app")
+async def serve_app():
+    if os.path.exists("frontend/index.html"):
+        return FileResponse("frontend/index.html")
+    raise HTTPException(status_code=404, detail="Halaman aplikasi tidak ditemukan.")
 
 @app.post("/detect")
 async def detect_disease(file: UploadFile = File(...)):
@@ -131,6 +146,9 @@ async def ask_expert(request: QuestionRequest):
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Terjadi kesalahan pada LLM: {str(e)}")
+
+if os.path.exists("frontend"):
+    app.mount("/", StaticFiles(directory="frontend", html=True), name="frontend")
 
 if __name__ == "__main__":
     uvicorn.run("api:app", host="0.0.0.0", port=8000, reload=True)
