@@ -25,7 +25,7 @@ COPY --chown=user ./requirements.txt requirements.txt
 # Install dependencies (tambahkan library sistem tambahan jika YOLO membutuhkannya)
 RUN pip install --no-cache-dir --upgrade -r requirements.txt
 
-# Salin SELURUH file proyek Anda (termasuk folder chroma_data dan model YOLO)
+# Salin seluruh file proyek aplikasi (termasuk folder chroma_db dan model YOLO)
 COPY --chown=user . /app
 
 # Jalankan FastAPI di port 7860 (Wajib)

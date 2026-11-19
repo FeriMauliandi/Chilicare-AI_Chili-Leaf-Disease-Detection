@@ -8,7 +8,6 @@ services:
       - "8000:8000"
     volumes:
       - ./chroma_db:/app/chroma_db
-      - ./chroma_data:/app/chroma_data 
       - ./model:/app/model
       - hf_cache:/root/.cache/huggingface
     env_file:
