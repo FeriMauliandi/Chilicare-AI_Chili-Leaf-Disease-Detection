@@ -2,10 +2,13 @@
 # Dokumentasi: https://docs.netlify.com/configure-builds/file-based-configuration/
 
 [build]
-  # Direktori yang dipublikasikan ke CDN Netlify
-  publish = "frontend"
+  # Tetapkan Base directory ke folder frontend agar Netlify TIDAK mendeteksi requirements.txt di root
+  base = "frontend"
 
-  # Static HTML/CSS/JS murni, tidak memerlukan build command
+  # Direktori yang dipublikasikan relatif terhadap Base directory
+  publish = "."
+
+  # Static HTML/CSS/JS murni, tidak memerlukan build command atau pip install
   command = ""
 
 # Routing halaman:
