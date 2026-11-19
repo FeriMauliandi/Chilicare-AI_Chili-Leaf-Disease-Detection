@@ -127,9 +127,17 @@ jobs:
           if [ -n "$HF_TOKEN" ]; then
             echo "Configuring Git LFS & Hugging Face Remote..."
             git lfs install
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
             git remote add hf https://feryms:$HF_TOKEN@huggingface.co/spaces/feryms/chilicareAI || git remote set-url hf https://feryms:$HF_TOKEN@huggingface.co/spaces/feryms/chilicareAI
-            echo "Deploying commits and LFS objects to Hugging Face Space..."
-            git push hf main:main --force
+
+            echo "Creating clean deployment branch without historical oversized files..."
+            git checkout --orphan hf-deploy
+            git add -A
+            git commit -m "Deploy ChiliCare AI to Hugging Face Space from ${{ github.sha }}"
+
+            echo "Deploying to Hugging Face Space..."
+            git push hf hf-deploy:main --force
           else
             echo "HF_TOKEN secret not provided. Skipping Hugging Face deployment step."
           fi
