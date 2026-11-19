@@ -133,6 +133,24 @@ jobs:
 
             echo "Creating clean deployment branch without historical oversized files..."
             git checkout --orphan hf-deploy
+
+            echo "Injecting Hugging Face YAML metadata for Space deployment only..."
+            cat << 'EOF' > /tmp/hf_metadata.txt
+---
+title: ChiliCare AI
+emoji: 🌶️
+colorFrom: red
+colorTo: green
+sdk: docker
+app_port: 7860
+pinned: false
+short_description: Deteksi Penyakit Daun Cabai Berbasis YOLOv11s dan LLM RAG
+---
+
+EOF
+            cat /tmp/hf_metadata.txt README.md > /tmp/hf_readme.md
+            mv /tmp/hf_readme.md README.md
+
             git add -A
             git commit -m "Deploy ChiliCare AI to Hugging Face Space from ${{ github.sha }}"
 
