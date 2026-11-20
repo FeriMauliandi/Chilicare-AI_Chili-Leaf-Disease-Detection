@@ -17,6 +17,7 @@ const API_ASK_URL = `${API_BASE}/ask`;
 
 let selectedFile = null;
 let chatHistory = [];
+const CHAT_STORAGE_KEY = "chilicare_chat_history";
 
 function parseMarkdown(text) {
   if (!text) return "";
@@ -133,6 +134,8 @@ function switchMenu(menu) {
     secChat.classList.add("flex");
     btnChat.className = activeClass;
     btnDetect.className = inactiveClass;
+    const chatBox = document.getElementById("chat-messages");
+    if (chatBox) scrollToBottom(chatBox, false);
   }
 }
 
@@ -348,6 +351,7 @@ async function handleSendChat(event) {
             // Simpan percakapan ke chatHistory lokal setelah streaming sukses
             chatHistory.push({ role: "user", content: question });
             chatHistory.push({ role: "assistant", content: fullTextFromAPI });
+            saveChatHistory();
           }
         }, 30);
         break;
@@ -368,22 +372,75 @@ async function handleSendChat(event) {
   }
 }
 
+function saveChatHistory() {
+  try {
+    // Simpan maksimal 50 pesan terakhir agar efisien dan hemat memori
+    if (chatHistory.length > 50) {
+      chatHistory = chatHistory.slice(-50);
+    }
+    localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(chatHistory));
+  } catch (e) {
+    console.warn("Gagal menyimpan riwayat chat ke localStorage:", e);
+  }
+}
+
+function loadChatHistory() {
+  try {
+    const saved = localStorage.getItem(CHAT_STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        chatHistory = parsed;
+        renderSavedChatHistory();
+      }
+    }
+  } catch (e) {
+    console.warn("Gagal memuat riwayat chat dari localStorage:", e);
+    chatHistory = [];
+  }
+}
+
+function renderSavedChatHistory() {
+  const chatBox = document.getElementById("chat-messages");
+  if (!chatBox) return;
+
+  if (chatHistory && chatHistory.length > 0) {
+    const chatEmpty = document.getElementById("chat-empty");
+    if (chatEmpty) chatEmpty.classList.add("hidden");
+
+    chatHistory.forEach((msg) => {
+      appendMessage(msg.role, msg.content);
+    });
+
+    scrollToBottom(chatBox, false);
+  }
+}
+
 function clearChatHistory() {
   chatHistory = [];
+  try {
+    localStorage.removeItem(CHAT_STORAGE_KEY);
+  } catch (e) {
+    console.warn("Gagal menghapus riwayat chat dari localStorage:", e);
+  }
   const chatBox = document.getElementById("chat-messages");
+  if (!chatBox) return;
   chatBox.innerHTML = `
     <div
       id="chat-empty"
-      class="h-full flex flex-col items-center justify-center text-slate-400 space-y-4 mt-4 md:mt-10"
+      class="h-full flex flex-col items-center justify-center text-[#6e8074] gap-4 py-8"
     >
-      <div
-        class="w-12 h-12 md:w-16 md:h-16 rounded-full bg-slate-100 flex items-center justify-center text-xl md:text-2xl"
-      >
-        💬
+      <div class="w-14 h-14 rounded-2xl bg-[#eaf4ed] border border-[#d9eee1] flex items-center justify-center">
+        <svg class="w-7 h-7 text-[#255d3e]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/>
+        </svg>
       </div>
-      <p class="text-sm md:text-base text-center">
-        Kirim pesan untuk memulai percakapan...
-      </p>
+      <div class="text-center max-w-sm">
+        <p class="text-sm font-bold text-[#101c14] mb-1">Mulai Konsultasi Tanaman</p>
+        <p class="text-xs text-[#6e8074] leading-relaxed">
+          Tanyakan seputar perawatan cabai rawit, cara meracik fungisida nabati, atau gejala penyakit daun.
+        </p>
+      </div>
     </div>
   `;
 }
@@ -435,9 +492,18 @@ function removeChatLoading(id) {
   if (el) el.remove();
 }
 
-function scrollToBottom(element) {
+function scrollToBottom(element, smooth = true) {
+  if (!element) return;
   element.scrollTo({
     top: element.scrollHeight,
-    behavior: "smooth",
+    behavior: smooth ? "smooth" : "auto",
   });
 }
+
+// Inisialisasi pemuatan riwayat chat yang tersimpan di localStorage
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", loadChatHistory);
+} else {
+  loadChatHistory();
+}
+
