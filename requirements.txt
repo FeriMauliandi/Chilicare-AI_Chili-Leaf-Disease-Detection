@@ -1,32 +1,41 @@
 --extra-index-url https://download.pytorch.org/whl/cpu
-torch
-torchvision
-fastapi
-uvicorn
-python-multipart
-sentence-transformers
-ultralytics
-rank_bm25     
-pillow
-langchain_classic
-langchain_core
-opencv-python-headless
-langchain
-langchain_groq
-langchain_community
-langchain-experimental
-langchain-core
-langchain-openai
-langchain-google-genai
-langchain-chroma
-langchain-huggingface
-chromadb
-pypdf
-streamlit
-python-dotenv
-pytest
-pytest-cov
-httpx
-aiofiles
-pytest-asyncio
-slowapi
+
+# Vision
+torch==2.5.1
+torchvision==0.20.1
+ultralytics==8.3.40
+opencv-python-headless==4.13.0.92
+pillow==11.3.0
+
+# API
+fastapi==0.128.8
+uvicorn==0.40.0
+python-multipart==0.0.26
+slowapi==0.1.10
+aiofiles==25.1.0
+httpx==0.28.1
+
+# RAG / LangChain
+langchain==1.3.4
+langchain-core==1.8.2
+langchain-classic==1.0.7
+langchain-community==0.4.2
+langchain-experimental==0.4.2
+langchain-groq==1.1.2
+langchain-openai==1.1.12
+langchain-google-genai==4.2.1
+langchain-chroma==1.1.0
+chromadb==1.4.1
+rank-bm25==0.2.2
+pypdf==6.9.2
+
+# UI alternatif
+streamlit==1.45.1
+
+# Utilitas
+python-dotenv==1.2.1
+
+# Testing
+pytest==9.1.1
+pytest-cov==7.1.0
+pytest-asyncio==1.4.0

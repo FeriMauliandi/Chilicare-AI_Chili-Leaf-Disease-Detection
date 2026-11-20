@@ -1,6 +1,6 @@
 # ChiliCare AI: Diagnosis Penyakit Daun Cabai (YOLOv11s & LLM RAG)
 
-[![Python](https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12-blue.svg?logo=python)](https://python.org)
+[![Python](https://img.shields.io/badge/Python-3.11%20%7C%203.12-blue.svg?logo=python)](https://python.org)
 [![YOLOv11](https://img.shields.io/badge/Vision-YOLOv11s%20(mAP50%3A%200.903)-00FFFF.svg?logo=ultralytics)](https://github.com/ultralytics/ultralytics)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-009688.svg?logo=fastapi)](https://fastapi.tiangolo.com)
 [![LangChain](https://img.shields.io/badge/LangChain-v0.3-orange.svg)](https://langchain.com)
@@ -103,7 +103,8 @@ Model mencatatkan recall 1.000 dan mAP@0.5 0.995 pada kelas penyakit kuning, men
 - **Rekomendasi penanganan via RAG**: Konteks agronomi diambil dari basis pengetahuan lokal untuk menghasilkan panduan penanganan kuratif, sanitasi, dan takaran bahan aktif.
 - **Konsultasi interaktif**: Antarmuka chat mendukung percakapan multi-turn untuk menanyakan perawatan tanaman, pemupukan, dan pengendalian hama dengan respon streaming token via Groq LPU.
 - **Efisiensi & proteksi DoS**: RAG chain diinisialisasi sekali saat server startup (singleton lifespan) dan endpoint dibatasi frekuensi request-nya (slowapi limiter).
-- **Otomatisasi CI/CD**: Rangkaian 27 unit test pytest, regression test sanitasi frontend, linting dengan Ruff, pembuatan Docker image, dan deployment otomatis ke Hugging Face Space melalui GitHub Actions.
+- **Basis pengetahuan terlabel**: 131 chunk dari 3 PDF agronomi, 3 halaman web, dan `data.json`, masing-masing diberi metadata `label` (Bercak, Keriting, Kuning, Sehat, Whitefly, Umum) sehingga pencarian per-penyakit menjangkau seluruh isi dokumen, bukan hanya entri JSON.
+- **Otomatisasi CI/CD**: Rangkaian 40 unit test pytest, regression test sanitasi frontend, linting dengan Ruff, pembuatan Docker image, dan deployment otomatis ke Hugging Face Space melalui GitHub Actions.
 
 ---
 
@@ -126,7 +127,8 @@ chilicareAI/
 │   │   ├── prompt.py             # Prompt engineering agronomi & patologi
 │   │   └── rag.py                # Pipeline sintesis diagnosis visi ke teks
 │   ├── ingestion/
-│   │   ├── loader.py             # Multi-format document loader
+│   │   ├── loader.py             # Multi-format document loader (web, PDF, JSON, CSV)
+│   │   ├── labeler.py            # Penandaan otomatis label penyakit per chunk
 │   │   ├── chunker.py            # Pemotongan teks dokumen
 │   │   └── embedder.py           # Inisialisasi model embedding
 │   └── retrieval/
@@ -143,6 +145,8 @@ chilicareAI/
 │   ├── test_chunker.py           # Pengujian pemotongan teks
 │   ├── test_config.py            # Validasi konfigurasi & environment
 │   ├── test_embedder.py          # Pengujian model embedding
+│   ├── test_ingest.py            # Filter noise & strategi retry ingest
+│   ├── test_labeler.py           # Penandaan label chunk knowledge base
 │   ├── test_prompt.py            # Verifikasi prompt template
 │   └── test_reranker.py          # Pengujian fungsionalitas reranker
 ├── .github/workflows/
@@ -196,11 +200,34 @@ CORS_ALLOW_ORIGIN_REGEX=^https://([a-z0-9-]+\.)*(netlify\.app|hf\.space)$
 CORS_ALLOW_CREDENTIALS=false
 ```
 
-### 3. Eksekusi Indeksasi Vektor (Opsional jika memperbarui data)
+### 3. Bangun Ulang Basis Pengetahuan (jalankan jika data berubah)
 
 ```bash
 python ingest.py
 ```
+
+Perintah ini bersifat **idempoten**: embedding dihitung lebih dulu, baru
+koleksi lama dihapus dan dibangun ulang dari 3 PDF, 3 halaman web, dan
+`data/data.json`. Jadi jika kuota API habis di tengah proses, basis
+pengetahuan lama tetap utuh. Setiap chunk diberi label penyakit secara
+otomatis, dan chunk navigasi/daftar isi dibuang. Proses ini membutuhkan
+`GOOGLE_API_KEY` (Gemini) dan berjalan sekitar 2 menit karena kuota embedding
+free tier dibatasi 100 teks/menit.
+
+Komposisi basis pengetahuan saat ini:
+
+| Label | Chunk |
+| :--- | ---: |
+| Sehat | 68 |
+| Umum | 26 |
+| Keriting | 13 |
+| Kuning | 10 |
+| Whitefly | 8 |
+| Bercak | 6 |
+| **Total** | **131** |
+
+> Angka dapat bergeser sedikit antar-*run* karena tiga sumber berupa halaman
+> web yang isinya bisa berubah.
 
 ### 4. Menjalankan Aplikasi
 
@@ -242,7 +269,7 @@ node tests/frontend/sanitizer.test.js
 
 ### Alur Kerja GitHub Actions (`.github/workflows/ci-cd.yml`)
 Setiap kali terjadi `push` atau `pull request` ke branch `main`:
-1. **Lint & Test:** Memverifikasi kualitas kode dengan `ruff`, mengeksekusi 27 unit test dengan `pytest`, serta regression test sanitasi HTML frontend.
+1. **Lint & Test:** Memverifikasi kualitas kode dengan `ruff`, mengeksekusi 40 unit test dengan `pytest`, serta regression test sanitasi HTML frontend.
 2. **Docker Build:** Menguji build image Docker agar terbebas dari kendala dependensi.
 3. **Auto-Deploy:** Mempublikasikan image ke GitHub Container Registry (GHCR) dan memperbarui aplikasi di Hugging Face Space.
 

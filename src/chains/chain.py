@@ -68,16 +68,27 @@ def create_rag_chain(disease_label=None):
     qa_prompt = get_conversational_rag_prompt()
     
     def format_docs(docs):
+        # MultiQueryRetriever bisa mengembalikan chunk yang sama dari beberapa
+        # variasi query. Deduplikasi agar konteks tidak dipenuhi teks identik.
+        unique_docs = []
+        seen = set()
+        for doc in docs:
+            key = doc.page_content.strip()
+            if key in seen:
+                continue
+            seen.add(key)
+            unique_docs.append(doc)
+
         print("\n" + "="*50)
         print("🎯 [DEBUG] DOKUMEN TERBAIK SETELAH DI-RERANK & DIVERIFIKASI:")
-        for i, doc in enumerate(docs):
+        for i, doc in enumerate(unique_docs):
             sumber = doc.metadata.get('label') or doc.metadata.get('source') or 'Sumber tidak diketahui'
             skor = doc.metadata.get('relevance_score', 'N/A')
             print(f"  [{i+1}] Topik: {sumber} | Skor Relevansi: {skor}")
         print("="*50 + "\n")
-        
+
         # Gabungkan teks dokumen final
-        return "\n\n".join(doc.page_content for doc in docs)
+        return "\n\n".join(doc.page_content for doc in unique_docs)
 
     def normalize_input(x):
         """Mendukung input berupa string langsung maupun dictionary conversational."""

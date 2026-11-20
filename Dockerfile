@@ -1,5 +1,5 @@
-# Gunakan versi Python yang stabil untuk library AI
-FROM python:3.10-slim
+# Python 3.11 dipakai karena langchain-core 1.x mensyaratkan >= 3.11.
+FROM python:3.11-slim
 
 RUN apt-get update && apt-get install -y \
     libgl1 \
