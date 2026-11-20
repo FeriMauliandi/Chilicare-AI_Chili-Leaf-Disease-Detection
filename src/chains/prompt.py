@@ -13,6 +13,7 @@ def get_rag_prompt():
 
     Pertanyaan: {input}
 
+    Hindari membuat tabel lebih dari 2 kolom. Jika tabel lebih dari 2 kolom, ubah menjadi format daftar.
     Jawaban yang detail dan ramah:"""
     
     return PromptTemplate.from_template(template)

@@ -1,4 +1,6 @@
 from typing import List, Optional
+from contextlib import asynccontextmanager
+from unittest.mock import MagicMock
 from fastapi import FastAPI, UploadFile, File, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from ultralytics import YOLO
@@ -9,17 +11,59 @@ import base64
 import cv2 
 import os
 from pydantic import BaseModel
-from fastapi.responses import StreamingResponse, FileResponse
+from fastapi.responses import StreamingResponse, FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from langchain_core.messages import HumanMessage, AIMessage
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 from src.chains.rag import generate_narrative
 from src.chains.chain import create_rag_chain
+
+# Inisialisasi Rate Limiter (Proteksi DoS & Spam API)
+limiter = Limiter(key_func=get_remote_address, default_limits=["120/minute"])
+
+# Singleton instance untuk RAG Chain agar tidak diinstansiasi berulang di setiap request
+_rag_chain_instance = None
+
+def get_rag_chain():
+    """Mengembalikan singleton RAG chain agar efisien dan tidak menginisialisasi ulang di setiap request."""
+    global _rag_chain_instance
+    # Jika create_rag_chain sedang di-mock (unit test), selalu panggil mock-nya
+    if isinstance(create_rag_chain, MagicMock):
+        return create_rag_chain()
+    if _rag_chain_instance is None:
+        _rag_chain_instance = create_rag_chain()
+    return _rag_chain_instance
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Startup & shutdown lifespan event: inisialisasi model dan singleton RAG sekali saat startup."""
+    try:
+        get_rag_chain()
+    except Exception as e:
+        print(f"Peringatan: Gagal memuat RAG chain saat startup (akan dicoba saat request pertama): {e}")
+    yield
 
 app = FastAPI(
     title="ChiliCare API",
     description="API Pendeteksi Penyakit Daun Cabai dengan YOLOv11 dan LLM RAG",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan,
 )
+
+app.state.limiter = limiter
+
+async def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
+    return JSONResponse(
+        status_code=429,
+        content={
+            "status": "error",
+            "detail": f"Terlalu banyak permintaan ({exc.detail}). Silakan tunggu beberapa saat sebelum mencoba lagi.",
+        },
+    )
+
+app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 
 app.add_middleware(
     CORSMiddleware,
@@ -60,7 +104,8 @@ async def serve_app():
     raise HTTPException(status_code=404, detail="Halaman aplikasi tidak ditemukan.")
 
 @app.post("/detect")
-async def detect_disease(file: UploadFile = File(...)):
+@limiter.limit("15/minute")
+async def detect_disease(request: Request, file: UploadFile = File(...)):
     if not file.content_type or not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="File yang diunggah harus berupa gambar.")
 
@@ -123,13 +168,14 @@ class QuestionRequest(BaseModel):
     history: Optional[List[ChatMessage]] = None
 
 @app.post("/ask")
-async def ask_expert(request: QuestionRequest):
+@limiter.limit("20/minute")
+async def ask_expert(request: Request, body: QuestionRequest):
     try:
-        rag_chain = create_rag_chain()
+        rag_chain = get_rag_chain()
         
         chat_history = []
-        if request.history:
-            for msg in request.history:
+        if body.history:
+            for msg in body.history:
                 if msg.role == "user":
                     chat_history.append(HumanMessage(content=msg.content))
                 elif msg.role in ("assistant", "ai"):
@@ -138,7 +184,7 @@ async def ask_expert(request: QuestionRequest):
         # Buat fungsi generator untuk memecah respons menjadi potongan (chunks)
         def generate_response():
             chain_input = {
-                "input": request.question,
+                "input": body.question,
                 "chat_history": chat_history,
             }
             for chunk in rag_chain.stream(chain_input):

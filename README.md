@@ -1,5 +1,4 @@
-
-# 🌶️ ChiliCare AI: Sistem Cerdas Diagnosis Penyakit Daun Cabai (YOLOv11s & LLM RAG)
+# ChiliCare AI: Diagnosis Penyakit Daun Cabai (YOLOv11s & LLM RAG)
 
 [![Python](https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12-blue.svg?logo=python)](https://python.org)
 [![YOLOv11](https://img.shields.io/badge/Vision-YOLOv11s%20(mAP50%3A%200.903)-00FFFF.svg?logo=ultralytics)](https://github.com/ultralytics/ultralytics)
@@ -11,25 +10,23 @@
 [![CI/CD](https://img.shields.io/badge/CI%2FCD-GitHub%20Actions-green.svg?logo=github-actions)](.github/workflows/ci-cd.yml)
 [![Hugging Face](https://img.shields.io/badge/Hugging%20Face-Spaces%20Live-yellow.svg?logo=huggingface)](https://huggingface.co/spaces/feryms/chilicareAI)
 
-> **ChiliCare AI** adalah aplikasi web cerdas berarsitektur *dual-pipeline* yang dirancang untuk membantu petani, penyuluh, dan akademisi agronomi dalam mendiagnosis penyakit tanaman cabai secara presisi. Sistem ini menggabungkan model *Computer Vision* **YOLOv11s** untuk lokalisasi lesi visual dan ekosistem *Large Language Models* (LLM) berbasis **Retrieval-Augmented Generation (RAG)** untuk memberikan rekomendasi penanganan dan dosis bahan aktif yang terstruktur.
+ChiliCare AI adalah aplikasi web untuk mendiagnosis penyakit daun tanaman cabai. Sistem ini menggabungkan deteksi objek YOLOv11s untuk melokalisasi gejala visual pada daun dan Retrieval-Augmented Generation (RAG) untuk memberikan panduan penanganan serta dosis bahan aktif berdasarkan literatur agronomi.
 
 ---
 
-## 🎯 Latar Belakang & Nilai Nyata di Lapangan
+## Latar Belakang & Masalah
 
-Tanaman cabai (*Capsicum annuum*) merupakan komoditas hortikultura strategis di Indonesia dengan fluktuasi harga yang tinggi. Salah satu ancaman terbesar kegagalan panen adalah serangan hama dan infeksi patogen daun (seperti *Virus Gemini*, *Cercospora*, dan *Thrips*).
+Penyakit daun dan hama seperti virus gemini, bercak daun cercospora, dan kutu kebul sering menyebabkan penurunan produksi cabai (*Capsicum annuum*). Di lapangan, petani kerap menghadapi kendala:
 
-**Tantangan di Lapangan:**
-1. **Diagnosis Terlambat atau Keliru:** Gejala awal bercak jamur dan serangan hama pengisap sering disalahartikan, berujung pada penggunaan pestisida yang salah sasaran.
-2. **Keterbatasan Akses Ahli:** Tenaga penyuluh pertanian lapangan memiliki keterbatasan waktu dan jangkauan wilayah.
-3. **Resistensi Kimia:** Penyemprotan bahan aktif tanpa takaran tepat memicu resistensi hama dan pemborosan biaya produksi.
+1. Kesalahan diagnosis antara infeksi jamur dan hama pengisap yang berujung pada penggunaan pestisida yang tidak tepat sasaran.
+2. Keterbatasan waktu dan wilayah jangkauan tenaga penyuluh pertanian.
+3. Penggunaan bahan aktif tanpa dosis terukur yang memicu resistensi patogen.
 
-**Solusi ChiliCare AI:**
-Menghadirkan asisten agronomi saku yang dapat diakses dari peramban ponsel. Cukup unggah foto daun bergejala untuk mendapatkan identifikasi *bounding box* visual dalam hitungan milidetik, diikuti narasi penanganan kuratif dan preventif dari basis data agronomi terpercaya.
+ChiliCare AI menyediakan identifikasi visual berbasis foto daun cabai langsung dari peramban ponsel atau desktop, dilengkapi rekomendasi penanganan kuratif dan preventif dari basis data agronomi.
 
 ---
 
-## 🏗️ Arsitektur Sistem
+## Arsitektur Sistem
 
 Sistem beroperasi melalui dua pipeline terpisah yang terintegrasi di backend FastAPI:
 
@@ -68,66 +65,56 @@ flowchart TD
 
 ---
 
-## 📊 Hasil Evaluasi Model (YOLOv11s)
+## Hasil Evaluasi Model (YOLOv11s)
 
 Model dievaluasi menggunakan data uji independen (*test split*) dengan augmentasi pengujian (*Test-Time Augmentation*).
 
 ### Spesifikasi Model
-- **Arsitektur:** YOLO11s (`100 layers`, `9,414,735 parameters`, `21.4 GFLOPs`)
-- **Perangkat Evaluasi:** Tesla T4 GPU (16 GB VRAM)
-- **Kecepatan Inferensi:** ~31.7 ms per citra (GPU) / ~180 ms (CPU)
-- **Ukuran File Bobot:** ~19.2 MB (`best.pt`)
+- Arsitektur: YOLO11s (100 layers, 9,414,735 parameters, 21.4 GFLOPs)
+- Perangkat Evaluasi: Tesla T4 GPU (16 GB VRAM)
+- Kecepatan Inferensi: ~31.7 ms per citra (GPU) / ~180 ms (CPU)
+- Ukuran File Bobot: ~19.2 MB (`best.pt`)
 
-### 1. Performa Keseluruhan (Overall Test Metrics)
+### 1. Performa Keseluruhan
 
 | Dataset Split | Gambar | Objek (Instances) | Precision (Box-P) | Recall (R) | mAP@0.5 | mAP@0.5:0.95 |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-| **Validation** | 60 | 110 | 0.861 | 0.789 | 0.869 | 0.713 |
-| **Test (Final)** | **60** | **111** | **0.896** | **0.882** | **0.903** | **0.758** |
+| Validation | 60 | 110 | 0.861 | 0.789 | 0.869 | 0.713 |
+| Test (Final) | 60 | 111 | 0.896 | 0.882 | 0.903 | 0.758 |
 
 ### 2. Performa Deteksi per Kelas (Test Set)
 
 | Kelas | Gambar | Objek (Instances) | Precision | Recall | mAP@0.5 | mAP@0.5:0.95 |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-| 🟤 **Bercak Daun (Cercospora)** | 11 | 11 | **0.963** | 0.909 | **0.905** | 0.797 |
-| 🍃 **Daun Keriting (Thrips / Mites)** | 11 | 36 | 0.785 | 0.889 | **0.896** | 0.673 |
-| 🟨 **Penyakit Kuning (Virus Gemini)** | 14 | 16 | 0.898 | **1.000** | **0.995** | **0.825** |
-| 🌿 **Daun Sehat (Normal)** | 13 | 29 | **1.000** | 0.716 | **0.867** | 0.773 |
-| 🪰 **Kutu Kebul (Whitefly)** | 12 | 19 | 0.832 | 0.895 | **0.850** | 0.724 |
-| **Rata-rata (All Classes)** | **60** | **111** | **0.896** | **0.882** | **0.903** | **0.758** |
+| Bercak Daun (Cercospora) | 11 | 11 | 0.963 | 0.909 | 0.905 | 0.797 |
+| Daun Keriting (Thrips / Mites) | 11 | 36 | 0.785 | 0.889 | 0.896 | 0.673 |
+| Penyakit Kuning (Virus Gemini) | 14 | 16 | 0.898 | 1.000 | 0.995 | 0.825 |
+| Daun Sehat (Normal) | 13 | 29 | 1.000 | 0.716 | 0.867 | 0.773 |
+| Kutu Kebul (Whitefly) | 12 | 19 | 0.832 | 0.895 | 0.850 | 0.724 |
+| Rata-rata (All Classes) | 60 | 111 | 0.896 | 0.882 | 0.903 | 0.758 |
 
-> **Analisis Hasil:** Model menunjukkan kemampuan istimewa pada deteksi **Penyakit Kuning** dengan **Recall 100%** dan **mAP50 99.5%**, memastikan infeksi virus gemini tidak terlewatkan di lahan. Deteksi **Bercak Daun** dan **Daun Sehat** masing-masing mencapai presisi **96.3%** dan **100%**, meminimalkan risiko alarm palsu.
-
----
-
-## 🚀 Fitur & Keunggulan Teknis
-
-1. **Dual-Pipeline Vision-to-Text & Text-to-Text**:
-   - Inferensi visual cepat dengan bounding box anotasi.
-   - Penjelasan penyakit, penyebab biologis, dan langkah pemulihan otomatis via RAG.
-2. **Chatbot Ahli Agronomi Terpadu**:
-   - Asisten percakapan interaktif multi-turn untuk konsultasi dosis pupuk NPK, jarak tanam, dan sanitasi gulma.
-   - Didukung streaming token berkecepatan tinggi via Groq LPU.
-3. **Antarmuka Web Modern & Responsif**:
-   - Dilengkapi **Landing Page** informatif bertema agrikultur dan **Web App** yang nyaman digunakan di layar desktop maupun ponsel.
-   - Penuh aksesibilitas keyboard dan navigasi tanpa hambatan.
-4. **Basis Pengetahuan Terverifikasi**:
-   - Seluruh jawaban grounded pada modul budidaya cabai resmi untuk mencegah halusinasi jawaban AI.
-5. **Siap Produksi & Teruji CI/CD**:
-   - Pengujian otomatis 21 unit test pytest.
-   - Linting ruff standar industri.
-   - Pipeline GitHub Actions otomatis untuk publikasi Docker image dan deploy ke Hugging Face Space.
+Model mencatatkan recall 1.000 dan mAP@0.5 0.995 pada kelas penyakit kuning, menandakan seluruh sampel uji terdeteksi. Pada kelas bercak daun dan daun sehat, presisi mencapai 0.963 dan 1.000.
 
 ---
 
-## 📂 Struktur Proyek
+## Fitur Utama
+
+- **Deteksi lesi visual**: Model YOLOv11s mengidentifikasi bercak daun, daun keriting, daun kuning, daun sehat, dan kutu kebul dengan anotasi bounding box dan skor keyakinan.
+- **Rekomendasi penanganan via RAG**: Konteks agronomi diambil dari basis pengetahuan lokal untuk menghasilkan panduan penanganan kuratif, sanitasi, dan takaran bahan aktif.
+- **Konsultasi interaktif**: Antarmuka chat mendukung percakapan multi-turn untuk menanyakan perawatan tanaman, pemupukan, dan pengendalian hama dengan respon streaming token via Groq LPU.
+- **Efisiensi & proteksi DoS**: RAG chain diinisialisasi sekali saat server startup (singleton lifespan) dan endpoint dibatasi frekuensi request-nya (slowapi limiter).
+- **Otomatisasi CI/CD**: Rangkaian 23 unit test pytest, linting dengan Ruff, pembuatan Docker image, dan deployment otomatis ke Hugging Face Space melalui GitHub Actions.
+
+---
+
+## Struktur Proyek
 
 ```text
 chilicareAI/
 ├── backend/
 │   └── api.py                    # Aplikasi FastAPI, routing inferensi YOLO & streaming chat
 ├── frontend/
-│   ├── index.html                # Halaman beranda (Landing page) modern
+│   ├── index.html                # Halaman beranda (Landing page)
 │   ├── app.html                  # Antarmuka aplikasi web deteksi penyakit & chat AI
 │   ├── script.js                 # Logika streaming chat, upload & markdown parsing
 │   ├── background.jpg            # Aset fotografi cabai di kebun
@@ -168,7 +155,7 @@ chilicareAI/
 
 ---
 
-## 🛠️ Panduan Memulai Cepat
+## Panduan Memulai Cepat
 
 ### 1. Kloning Repositori & Persiapan Lingkungan
 
@@ -216,10 +203,10 @@ python ingest.py
 ```bash
 uvicorn backend.api:app --host 0.0.0.0 --port 8000 --reload
 ```
-Akses di peramban Anda:
-- **Landing Page:** `http://localhost:8000/`
-- **Aplikasi Deteksi & Chat:** `http://localhost:8000/app`
-- **Dokumentasi API Swagger:** `http://localhost:8000/docs`
+Akses di peramban:
+- Landing Page: `http://localhost:8000/`
+- Aplikasi Deteksi & Chat: `http://localhost:8000/app`
+- Dokumentasi API Swagger: `http://localhost:8000/docs`
 
 #### Opsi B: Menggunakan Docker
 ```bash
@@ -230,9 +217,9 @@ Akses aplikasi di `http://localhost:7860`.
 
 ---
 
-## 🧪 Pengujian & CI/CD Pipeline
+## Pengujian & CI/CD Pipeline
 
-Proyek ini menerapkan pengujian otomatis terstandar untuk menjamin stabilitas kode:
+Proyek ini menerapkan pengujian otomatis terstandar untuk memverifikasi fungsionalitas sistem:
 
 ```bash
 # Menjalankan seluruh pengujian unit
@@ -247,12 +234,12 @@ ruff check src/ backend/ tests/
 
 ### Alur Kerja GitHub Actions (`.github/workflows/ci-cd.yml`)
 Setiap kali terjadi `push` atau `pull request` ke branch `main`:
-1. **Lint & Test:** Memverifikasi kualitas kode dengan `ruff` dan mengeksekusi 21 unit test dengan `pytest`.
-2. **Docker Build:** Menguji build image Docker agar bebas dari kendala dependensi.
-3. **Auto-Deploy:** Otomatis mempublikasikan image ke GitHub Container Registry (GHCR) dan memperbarui aplikasi di **Hugging Face Space**.
+1. **Lint & Test:** Memverifikasi kualitas kode dengan `ruff` dan mengeksekusi 23 unit test dengan `pytest`.
+2. **Docker Build:** Menguji build image Docker agar terbebas dari kendala dependensi.
+3. **Auto-Deploy:** Mempublikasikan image ke GitHub Container Registry (GHCR) dan memperbarui aplikasi di Hugging Face Space.
 
 ---
 
-## 📄 Lisensi & Pernyataan Penelitian
+## Lisensi & Pernyataan Penelitian
 
-Proyek ini dikembangkan untuk tujuan penelitian dan alat bantu agronomi terbuka. Seluruh saran pengobatan penyakit dan rekomendasi pestisida bersumber dari pustaka penyuluhan budidaya cabai. Selalu perhatikan instruksi label resmi produsen bahan aktif saat melakukan penanganan di lahan pertanian.
+Proyek ini dikembangkan untuk tujuan penelitian dan alat bantu agronomi terbuka. Rekomendasi penanganan dan bahan aktif bersumber dari modul penyuluhan budidaya cabai. Selalu perhatikan petunjuk pada label resmi produsen bahan aktif saat melakukan penanganan di lahan pertanian.

@@ -91,3 +91,49 @@ def test_ask_expert_with_history(mock_create_rag_chain):
     call_args = mock_chain.stream.call_args[0][0]
     assert call_args["input"] == "Berapa dosisnya?"
     assert len(call_args["chat_history"]) == 2
+
+def test_get_rag_chain_singleton():
+    """Test get_rag_chain caches and returns singleton instance."""
+    import backend.api
+    from src.chains.chain import create_rag_chain as orig_create_rag_chain
+
+    backend.api._rag_chain_instance = None
+    call_count = 0
+    dummy_chain = object()
+
+    def fake_create_chain():
+        nonlocal call_count
+        call_count += 1
+        return dummy_chain
+
+    backend.api.create_rag_chain = fake_create_chain
+    try:
+        res1 = backend.api.get_rag_chain()
+        res2 = backend.api.get_rag_chain()
+        assert res1 is dummy_chain
+        assert res2 is dummy_chain
+        assert call_count == 1
+    finally:
+        backend.api.create_rag_chain = orig_create_rag_chain
+        backend.api._rag_chain_instance = None
+
+@patch("backend.api.model")
+def test_rate_limit_exceeded(mock_model):
+    """Test rate limiting triggers HTTP 429 when threshold is exceeded."""
+    from backend.api import limiter
+    limiter.reset()
+
+    try:
+        files = {"file": ("test.txt", b"dummy", "text/plain")}
+        responses = [client.post("/detect", files=files) for _ in range(17)]
+        status_codes = [r.status_code for r in responses]
+        assert 429 in status_codes
+        
+        rate_limited = [r for r in responses if r.status_code == 429][0]
+        data = rate_limited.json()
+        assert rate_limited.status_code == 429
+        assert data["status"] == "error"
+        assert "Terlalu banyak permintaan" in data["detail"]
+    finally:
+        limiter.reset()
+
