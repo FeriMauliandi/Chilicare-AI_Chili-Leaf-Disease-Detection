@@ -19,9 +19,24 @@ let selectedFile = null;
 let chatHistory = [];
 const CHAT_STORAGE_KEY = "chilicare_chat_history";
 
+// Escaping HTML wajib dilakukan sebelum markdown diproses, karena hasilnya
+// dimasukkan lewat innerHTML. Tanpa ini, teks dari LLM/dokumen referensi bisa
+// menyuntikkan <script>, <img onerror=...>, atau atribut event berbahaya.
+function escapeHtml(value) {
+  if (value === null || value === undefined) return "";
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function parseMarkdown(text) {
   if (!text) return "";
-  let html = text;
+  // Semua konten diperlakukan sebagai teks biasa; hanya tag yang dibuat oleh
+  // fungsi ini sendiri yang boleh menjadi markup.
+  let html = escapeHtml(text);
   html = html.replace(/(?:^\|.*\|(?:\n|\r|$))+/gm, function (match) {
     let rows = match.trim().split("\n");
     let tableHtml =
@@ -122,20 +137,37 @@ function switchMenu(menu) {
   const inactiveClass =
     "flex-1 md:w-full flex items-center justify-center md:justify-start gap-2 md:gap-3 px-4 py-2.5 md:py-3 rounded-xl font-medium transition-all text-slate-500 hover:bg-slate-50 hover:text-slate-700 text-sm md:text-base whitespace-nowrap";
 
+  if (!secDetect || !secChat) return;
+
+  // Simpan state menu aktif ke localStorage & URL hash agar bertahan saat halaman direfresh
+  try {
+    localStorage.setItem("chilicare_active_tab", menu);
+    if (window.location.hash !== "#" + menu) {
+      history.replaceState(null, "", "#" + menu);
+    }
+  } catch (e) {
+    console.warn("Gagal menyimpan active tab:", e);
+  }
+
   if (menu === "detect") {
     secDetect.classList.remove("hidden");
     secChat.classList.add("hidden");
     secChat.classList.remove("flex");
-    btnDetect.className = activeClass;
-    btnChat.className = inactiveClass;
+    if (btnDetect) btnDetect.className = activeClass;
+    if (btnChat) btnChat.className = inactiveClass;
   } else {
     secDetect.classList.add("hidden");
     secChat.classList.remove("hidden");
     secChat.classList.add("flex");
-    btnChat.className = activeClass;
-    btnDetect.className = inactiveClass;
+    if (btnChat) btnChat.className = activeClass;
+    if (btnDetect) btnDetect.className = inactiveClass;
+
+    // Pastikan riwayat percakapan ter-render dan discroll ke bawah saat tab chat dibuka
+    renderSavedChatHistory();
     const chatBox = document.getElementById("chat-messages");
-    if (chatBox) scrollToBottom(chatBox, false);
+    if (chatBox) {
+      setTimeout(() => scrollToBottom(chatBox, false), 50);
+    }
   }
 }
 
@@ -248,7 +280,7 @@ function tampilkanHasilDeteksi(data) {
       div.innerHTML = `
                 <div class="absolute top-0 left-0 w-1 md:w-1.5 h-full bg-rose-500"></div>
                 <h4 class="text-base md:text-lg font-bold text-slate-800 mb-2 flex flex-col md:flex-row md:items-center justify-between gap-1">
-                    <span>${item.class}</span>
+                    <span>${escapeHtml(item.class)}</span>
                     <span class="text-xs font-semibold bg-slate-100 text-slate-500 px-2 py-1 rounded-md w-fit">Keyakinan: ${confidencePercent}%</span>
                 </h4>
                 <div class="text-slate-600 text-xs md:text-sm leading-relaxed mt-2 md:mt-3">
@@ -288,6 +320,10 @@ async function handleSendChat(event) {
   inputEl.value = "";
   inputEl.disabled = true;
   btnSend.disabled = true;
+
+  // Simpan pertanyaan user ke riwayat & localStorage segera agar tidak hilang jika halaman ter-refresh
+  chatHistory.push({ role: "user", content: question });
+  saveChatHistory();
 
   // Salin riwayat percakapan sebelumnya (maksimal 10 putaran terakhir)
   const historyToSend = chatHistory.slice(-10);
@@ -348,8 +384,7 @@ async function handleSendChat(event) {
             aiBubble.innerHTML = parseMarkdown(fullTextFromAPI);
             scrollToBottom(chatBox);
 
-            // Simpan percakapan ke chatHistory lokal setelah streaming sukses
-            chatHistory.push({ role: "user", content: question });
+            // Simpan jawaban asisten ke chatHistory lokal setelah streaming sukses
             chatHistory.push({ role: "assistant", content: fullTextFromAPI });
             saveChatHistory();
           }
@@ -365,6 +400,8 @@ async function handleSendChat(event) {
   } catch (err) {
     removeChatLoading(loadingId);
     appendMessage("assistant", "❌ Gagal terhubung ke server. Silakan coba lagi.");
+    chatHistory.push({ role: "assistant", content: "❌ Gagal terhubung ke server. Silakan coba lagi." });
+    saveChatHistory();
   } finally {
     inputEl.disabled = false;
     btnSend.disabled = false;
@@ -408,6 +445,10 @@ function renderSavedChatHistory() {
     const chatEmpty = document.getElementById("chat-empty");
     if (chatEmpty) chatEmpty.classList.add("hidden");
 
+    // Hapus elemen baris pesan yang sudah ada agar tidak terduplikasi saat re-render
+    const oldRows = chatBox.querySelectorAll(".chat-msg-row");
+    oldRows.forEach((r) => r.remove());
+
     chatHistory.forEach((msg) => {
       appendMessage(msg.role, msg.content);
     });
@@ -447,8 +488,9 @@ function clearChatHistory() {
 
 function appendMessage(role, content) {
   const chatBox = document.getElementById("chat-messages");
+  if (!chatBox) return null;
   const wrapper = document.createElement("div");
-  wrapper.className = `flex ${role === "user" ? "justify-end" : "justify-start"}`;
+  wrapper.className = `flex chat-msg-row ${role === "user" ? "justify-end" : "justify-start"}`;
 
   const bubble = document.createElement("div");
   if (role === "user") {
@@ -500,10 +542,26 @@ function scrollToBottom(element, smooth = true) {
   });
 }
 
-// Inisialisasi pemuatan riwayat chat yang tersimpan di localStorage
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", loadChatHistory);
-} else {
+// Inisialisasi pemuatan riwayat chat yang tersimpan di localStorage & pemulihan tab aktif
+function initChiliCareApp() {
   loadChatHistory();
+
+  // Pulihkan tab aktif saat pertama kali halaman dimuat
+  const hash = (window.location.hash || "").replace("#", "");
+  let savedTab = null;
+  try {
+    savedTab = localStorage.getItem("chilicare_active_tab");
+  } catch (e) {}
+
+  const initialTab = (hash === "chat" || hash === "detect") ? hash : (savedTab || "detect");
+  if (initialTab === "chat" && typeof switchMenu === "function") {
+    switchMenu("chat");
+  }
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initChiliCareApp);
+} else {
+  initChiliCareApp();
 }
 

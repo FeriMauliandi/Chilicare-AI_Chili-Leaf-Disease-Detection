@@ -103,7 +103,7 @@ Model mencatatkan recall 1.000 dan mAP@0.5 0.995 pada kelas penyakit kuning, men
 - **Rekomendasi penanganan via RAG**: Konteks agronomi diambil dari basis pengetahuan lokal untuk menghasilkan panduan penanganan kuratif, sanitasi, dan takaran bahan aktif.
 - **Konsultasi interaktif**: Antarmuka chat mendukung percakapan multi-turn untuk menanyakan perawatan tanaman, pemupukan, dan pengendalian hama dengan respon streaming token via Groq LPU.
 - **Efisiensi & proteksi DoS**: RAG chain diinisialisasi sekali saat server startup (singleton lifespan) dan endpoint dibatasi frekuensi request-nya (slowapi limiter).
-- **Otomatisasi CI/CD**: Rangkaian 23 unit test pytest, linting dengan Ruff, pembuatan Docker image, dan deployment otomatis ke Hugging Face Space melalui GitHub Actions.
+- **Otomatisasi CI/CD**: Rangkaian 27 unit test pytest, regression test sanitasi frontend, linting dengan Ruff, pembuatan Docker image, dan deployment otomatis ke Hugging Face Space melalui GitHub Actions.
 
 ---
 
@@ -189,6 +189,11 @@ OPENROUTER_API_KEY=sk-or-...
 
 # Opsional: Konfigurasi nama model LLM
 LLM_MODEL=openai/gpt-oss-20b
+
+# CORS: daftar origin dipisah koma (default: localhost + HF Space)
+CORS_ALLOW_ORIGINS=
+CORS_ALLOW_ORIGIN_REGEX=^https://([a-z0-9-]+\.)*(netlify\.app|hf\.space)$
+CORS_ALLOW_CREDENTIALS=false
 ```
 
 ### 3. Eksekusi Indeksasi Vektor (Opsional jika memperbarui data)
@@ -230,11 +235,14 @@ pytest --cov=src --cov=backend tests/
 
 # Menjalankan linter kode
 ruff check src/ backend/ tests/
+
+# Menguji sanitasi HTML frontend (butuh Node.js)
+node tests/frontend/sanitizer.test.js
 ```
 
 ### Alur Kerja GitHub Actions (`.github/workflows/ci-cd.yml`)
 Setiap kali terjadi `push` atau `pull request` ke branch `main`:
-1. **Lint & Test:** Memverifikasi kualitas kode dengan `ruff` dan mengeksekusi 23 unit test dengan `pytest`.
+1. **Lint & Test:** Memverifikasi kualitas kode dengan `ruff`, mengeksekusi 27 unit test dengan `pytest`, serta regression test sanitasi HTML frontend.
 2. **Docker Build:** Menguji build image Docker agar terbebas dari kendala dependensi.
 3. **Auto-Deploy:** Mempublikasikan image ke GitHub Container Registry (GHCR) dan memperbarui aplikasi di Hugging Face Space.
 

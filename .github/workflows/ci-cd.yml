@@ -42,6 +42,10 @@ jobs:
         run: |
           pytest --cov=src --cov=backend --cov-report=term-missing tests/
 
+      - name: Run Frontend Sanitizer Tests
+        run: |
+          node tests/frontend/sanitizer.test.js
+
   docker-build:
     name: "CI: Docker Build Verification"
     runs-on: ubuntu-latest

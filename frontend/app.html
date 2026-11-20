@@ -430,7 +430,7 @@
     </main>
 
     <!-- Skrip Aplikasi -->
-    <script src="script.js"></script>
+    <script src="script.js?v=1.2.0"></script>
 
     <script>
       // 1. Sinkronisasi Menu Aktif & Aksesibilitas
@@ -442,6 +442,8 @@
           }
           var btnDetect = document.getElementById("btn-menu-detect");
           var btnChat = document.getElementById("btn-menu-chat");
+
+          if (!btnDetect || !btnChat) return;
 
           if (menu === "detect") {
             btnDetect.className = "nav-tab-active flex-1 md:w-full flex items-center justify-center md:justify-start gap-3 px-4 py-3 rounded-xl font-bold transition-all text-sm whitespace-nowrap";
@@ -455,6 +457,17 @@
             btnDetect.setAttribute("aria-pressed", "false");
           }
         };
+
+        // Pulihkan tab aktif saat pertama kali halaman dimuat (berdasarkan URL hash atau localStorage)
+        var hash = (window.location.hash || "").replace("#", "");
+        var savedTab = null;
+        try {
+          savedTab = localStorage.getItem("chilicare_active_tab");
+        } catch (e) {}
+        var initialTab = (hash === "chat" || hash === "detect") ? hash : (savedTab || "detect");
+        if (initialTab === "chat") {
+          window.switchMenu("chat");
+        }
       })();
 
       // 2. Format Kartu Hasil Deteksi agar Selaras dengan Desain

@@ -13,7 +13,10 @@ def get_rag_prompt():
 
     Pertanyaan: {input}
 
-    Hindari membuat tabel lebih dari 2 kolom. Jika tabel lebih dari 2 kolom, ubah menjadi format daftar.
+    Aturan Format Output:
+    - Jangan membuat tabel lebih dari 3 kolom. Maksimal tabel adalah 3 kolom agar rapi dan nyaman dibaca di layar ponsel.
+    - Jika informasi membutuhkan lebih dari 3 kolom, sajikan dalam format daftar poin (bullet points) atau daftar bernomor, jangan gunakan tabel.
+
     Jawaban yang detail dan ramah:"""
     
     return PromptTemplate.from_template(template)
@@ -50,6 +53,9 @@ def get_conversational_rag_prompt():
         "Jika jawabannya tidak ada di dalam konteks atau di luar topik pertanian cabai, "
         "katakan dengan jujur dan ramah bahwa Anda tidak memiliki informasi tersebut. "
         "Jangan mengarang informasi.\n\n"
+        "Aturan Format Output:\n"
+        "- Jangan membuat tabel lebih dari 3 kolom. Maksimal tabel adalah 3 kolom (misalnya: No | Bahan Aktif | Dosis atau Aspek | Keterangan).\n"
+        "- Jika informasi atau perbandingan membutuhkan lebih dari 3 kolom, wajib ubah menjadi format daftar (bullet points atau nomor), jangan gunakan tabel agar mudah dibaca di ponsel.\n\n"
         "Konteks Referensi:\n{context}"
     )
     return ChatPromptTemplate.from_messages([
@@ -74,5 +80,8 @@ Tugas:
 Jelaskan tentang kondisi/penyakit "{disease_name}" berdasarkan referensi di atas.
 Gunakan bahasa yang sederhana, ramah, dan mudah dipahami oleh petani cabai.
 Jika kondisinya adalah "Sehat", berikan apresiasi dan jelaskan bahwa tanaman dalam kondisi sehat (jangan jawab jika hasilnya bukan "sehat").
+
+Aturan Format Output:
+- Jangan membuat tabel lebih dari 3 kolom. Jika data membutuhkan lebih dari 3 kolom, sajikan dalam bentuk daftar poin.
 """
 )

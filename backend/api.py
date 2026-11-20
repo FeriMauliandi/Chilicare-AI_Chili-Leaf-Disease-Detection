@@ -65,12 +65,57 @@ async def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
 
 app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 
+# --- Konfigurasi CORS ---
+# Origin harus eksplisit. Wildcard "*" tidak boleh dikombinasikan dengan
+# allow_credentials=True karena browser akan menolak konfigurasi tersebut
+# (dan jika dipaksa, artinya semua situs boleh membaca respons API).
+DEFAULT_ALLOWED_ORIGINS = [
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:8501",
+    "http://127.0.0.1:8501",
+    "https://feryms-chilicareai.hf.space",
+]
+
+
+def _get_cors_settings():
+    raw_origins = os.getenv("CORS_ALLOW_ORIGINS")
+    if raw_origins:
+        origins = [origin.strip() for origin in raw_origins.split(",") if origin.strip()]
+    else:
+        origins = list(DEFAULT_ALLOWED_ORIGINS)
+
+    # Frontend statis dideploy ke Netlify/HF Space, jadi subdomain platform
+    # tersebut diizinkan secara default. Bisa dipersempit lewat env.
+    origin_regex = os.getenv(
+        "CORS_ALLOW_ORIGIN_REGEX",
+        r"^https://([a-z0-9-]+\.)*(netlify\.app|hf\.space)$",
+    ).strip() or None
+
+    allow_credentials = os.getenv("CORS_ALLOW_CREDENTIALS", "false").lower() in (
+        "1",
+        "true",
+        "yes",
+    )
+    if "*" in origins:
+        # Wildcard tidak valid bersama credentials; matikan credentials.
+        allow_credentials = False
+
+    return origins, origin_regex, allow_credentials
+
+
+_cors_origins, _cors_origin_regex, _cors_allow_credentials = _get_cors_settings()
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], 
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=_cors_origins,
+    allow_origin_regex=_cors_origin_regex,
+    allow_credentials=_cors_allow_credentials,
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Accept", "Content-Type", "Authorization"],
+    max_age=600,
 )
 
 MODEL_CANDIDATES = [

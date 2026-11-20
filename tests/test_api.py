@@ -117,6 +117,45 @@ def test_get_rag_chain_singleton():
         backend.api.create_rag_chain = orig_create_rag_chain
         backend.api._rag_chain_instance = None
 
+def _cors_preflight(origin, path="/ask", method="POST"):
+    return client.options(
+        path,
+        headers={
+            "Origin": origin,
+            "Access-Control-Request-Method": method,
+            "Access-Control-Request-Headers": "content-type",
+        },
+    )
+
+
+def test_cors_allows_local_origin():
+    """Origin lokal yang terdaftar boleh melakukan preflight."""
+    response = _cors_preflight("http://localhost:8000")
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == "http://localhost:8000"
+
+
+def test_cors_allows_huggingface_space_origin():
+    """Origin HF Space (deployment utama) diizinkan."""
+    origin = "https://feryms-chilicareai.hf.space"
+    response = _cors_preflight(origin)
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == origin
+
+
+def test_cors_rejects_unknown_origin():
+    """Origin asing tidak boleh mendapat header Access-Control-Allow-Origin."""
+    response = _cors_preflight("https://evil.example.com")
+    assert response.status_code == 400
+    assert "access-control-allow-origin" not in response.headers
+
+
+def test_cors_credentials_not_enabled_by_default():
+    """allow_credentials harus mati kecuali diaktifkan eksplisit lewat env."""
+    response = _cors_preflight("http://localhost:8000")
+    assert "access-control-allow-credentials" not in response.headers
+
+
 @patch("backend.api.model")
 def test_rate_limit_exceeded(mock_model):
     """Test rate limiting triggers HTTP 429 when threshold is exceeded."""
